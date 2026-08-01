@@ -125,3 +125,27 @@ test('Pages artifact preserves legacy HTML and nests the calculator under zysd',
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test('Pages artifact creates a root entry page when the repository has none', () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zysd-pages-root-'));
+  const fixtureDist = path.join(fixtureRoot, 'zysd', 'dist');
+  const fixtureOutput = path.join(fixtureRoot, '_site');
+
+  try {
+    fs.mkdirSync(fixtureDist, { recursive: true });
+    fs.writeFileSync(path.join(fixtureDist, 'index.html'), 'calculator', 'utf8');
+
+    const result = spawnSync(
+      process.execPath,
+      [assemblePagesScript, fixtureRoot, fixtureDist, fixtureOutput],
+      { encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const rootHtml = fs.readFileSync(path.join(fixtureOutput, 'index.html'), 'utf8');
+    assert.match(rootHtml, /href="\/zysd\/"/);
+    assert.match(rootHtml, /江苏电力曲线计算器/);
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
