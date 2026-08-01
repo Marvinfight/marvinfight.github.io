@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputFile = path.join(projectRoot, 'dist', 'index.html');
+const pagesWorkflowFile = path.join(projectRoot, '.github', 'workflows', 'deploy.yml');
 
 function readBuiltOutput() {
   const html = fs.readFileSync(outputFile, 'utf8');
@@ -60,5 +61,25 @@ test('build output includes the calculator title and result labels', () => {
 
   for (const label of expectedLabels) {
     assert.ok(output.includes(label), `Expected build output to include \"${label}\".`);
+  }
+});
+
+test('GitHub Pages workflow uploads and deploys the dist directory', () => {
+  assert.ok(
+    fs.existsSync(pagesWorkflowFile),
+    `Expected GitHub Pages workflow at ${pagesWorkflowFile}.`,
+  );
+
+  const workflow = fs.readFileSync(pagesWorkflowFile, 'utf8');
+  for (const expectedValue of [
+    'actions/upload-pages-artifact',
+    'actions/deploy-pages',
+    'path: dist',
+    'pnpm install --frozen-lockfile',
+  ]) {
+    assert.ok(
+      workflow.includes(expectedValue),
+      `Expected GitHub Pages workflow to include "${expectedValue}".`,
+    );
   }
 });
