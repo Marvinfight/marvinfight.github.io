@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputFile = path.join(projectRoot, 'dist', 'index.html');
-const pagesWorkflowFile = path.join(projectRoot, '.github', 'workflows', 'deploy.yml');
+const repositoryRoot = path.resolve(projectRoot, '..');
+const pagesWorkflowFile = path.join(repositoryRoot, '.github', 'workflows', 'deploy.yml');
 
 function readBuiltOutput() {
   const html = fs.readFileSync(outputFile, 'utf8');
