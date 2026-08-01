@@ -9,7 +9,8 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const indexFile = path.join(repositoryRoot, 'index.html');
+const zysdDirectory = path.join(repositoryRoot, 'zysd');
+const indexFile = path.join(zysdDirectory, 'index.html');
 
 function readPage() {
   return fs.readFileSync(indexFile, 'utf8');
@@ -84,5 +85,19 @@ test('repository is ready for branch-based GitHub Pages publishing', () => {
     fs.existsSync(path.join(repositoryRoot, '.github', 'workflows', 'deploy.yml')),
     false,
     'Expected the competing custom Pages workflow to be removed.',
+  );
+});
+
+test('calculator is published only as zysd/index.html', () => {
+  assert.equal(
+    fs.existsSync(path.join(repositoryRoot, 'index.html')),
+    false,
+    'Expected the duplicate root index.html to be absent.',
+  );
+  assert.deepEqual(
+    fs.readdirSync(zysdDirectory, { withFileTypes: true })
+      .map((entry) => entry.name)
+      .sort(),
+    ['index.html'],
   );
 });
