@@ -161,6 +161,57 @@
         gap: 12px;
       }
 
+      .curve-chart {
+        min-height: 200px;
+        margin-top: 24px;
+        padding: 12px;
+        border: 1px solid #d6e4eb;
+        border-radius: 9px;
+        background: #f8fcfe;
+      }
+
+      .curve-chart svg {
+        display: block;
+        width: 100%;
+        height: 200px;
+        overflow: visible;
+      }
+
+      .chart-grid-line {
+        stroke: #d9e8ef;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-zero-line {
+        stroke: #87a9ba;
+        stroke-dasharray: 4 4;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-line {
+        fill: none;
+        stroke: #0a87aa;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 3;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-point {
+        fill: #fff;
+        stroke: #0a87aa;
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-label {
+        fill: #60788b;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
       .hour-input {
         display: grid;
         gap: 6px;
@@ -226,6 +277,8 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px 10px;
         }
+
+        .curve-chart { padding: 8px; }
       }
     </style>
   </head>
@@ -242,11 +295,11 @@
 
       <section class="result-strip" aria-label="计算结果" aria-live="polite">
         <article class="result-card">
-          <span>2026 曲线优势/均价</span>
+          <span>2026 曲线优势 /厘</span>
           <output id="result-2026">--</output>
         </article>
         <article class="result-card">
-          <span>2027 曲线优势/均价</span>
+          <span>2027 曲线优势 /厘</span>
           <output id="result-2027">--</output>
         </article>
       </section>
@@ -266,6 +319,11 @@
             role="group"
             aria-label="2026 无光伏客户负荷曲线"
           ></div>
+          <div
+            class="curve-chart"
+            id="curve-chart-2026"
+            aria-label="2026 无光伏客户负荷曲线预览"
+          ></div>
         </section>
 
         <section class="curve-panel" aria-labelledby="curve-2027-title">
@@ -281,6 +339,11 @@
             id="curve-2027"
             role="group"
             aria-label="2027 客户负荷曲线"
+          ></div>
+          <div
+            class="curve-chart"
+            id="curve-chart-2027"
+            aria-label="2027 客户负荷曲线预览"
           ></div>
         </section>
       </div>
@@ -432,6 +495,113 @@
           document.getElementById('result-2027').textContent = core.formatNumber(result.curve2027);
         }
 
+        function createSvgElement(name, attributes = {}) {
+          const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+          Object.entries(attributes).forEach(([attribute, value]) => {
+            element.setAttribute(attribute, String(value));
+          });
+          return element;
+        }
+
+        function renderCurveChart(containerId, values, label) {
+          const container = document.getElementById(containerId);
+          const numericValues = values.map((value) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+          });
+          const width = 960;
+          const height = 200;
+          const padding = { top: 18, right: 16, bottom: 34, left: 54 };
+          const chartWidth = width - padding.left - padding.right;
+          const chartHeight = height - padding.top - padding.bottom;
+          const dataMinimum = Math.min(...numericValues);
+          const dataMaximum = Math.max(...numericValues);
+          const flatPadding = dataMaximum === 0 ? 1 : Math.abs(dataMaximum) * 0.1;
+          const minimum = dataMinimum === dataMaximum
+            ? dataMinimum - flatPadding
+            : Math.min(dataMinimum, 0);
+          const maximum = dataMinimum === dataMaximum
+            ? dataMaximum + flatPadding
+            : Math.max(dataMaximum, 0);
+          const range = maximum - minimum;
+          const xFor = (index) => padding.left + (chartWidth * index) / (numericValues.length - 1);
+          const yFor = (value) => padding.top + ((maximum - value) / range) * chartHeight;
+          const svg = createSvgElement('svg', {
+            viewBox: `0 0 ${width} ${height}`,
+            role: 'img',
+            'aria-label': `${label}，共 24 个小时负荷点`,
+          });
+          const title = createSvgElement('title');
+          title.textContent = `${label}预览`;
+          svg.append(title);
+
+          [0, 0.5, 1].forEach((ratio) => {
+            const y = padding.top + chartHeight * ratio;
+            svg.append(createSvgElement('line', {
+              x1: padding.left,
+              x2: width - padding.right,
+              y1: y,
+              y2: y,
+              class: 'chart-grid-line',
+              'aria-hidden': 'true',
+            }));
+          });
+
+          const zeroY = yFor(0);
+          svg.append(createSvgElement('line', {
+            x1: padding.left,
+            x2: width - padding.right,
+            y1: zeroY,
+            y2: zeroY,
+            class: 'chart-zero-line',
+            'aria-hidden': 'true',
+          }));
+
+          const points = numericValues.map((value, index) => `${xFor(index)},${yFor(value)}`);
+          svg.append(createSvgElement('polyline', {
+            points: points.join(' '),
+            class: 'chart-line',
+            'aria-hidden': 'true',
+          }));
+
+          numericValues.forEach((value, index) => {
+            svg.append(createSvgElement('circle', {
+              cx: xFor(index),
+              cy: yFor(value),
+              r: 3.5,
+              class: 'chart-point',
+              'aria-hidden': 'true',
+            }));
+          });
+
+          [0, 11, 23].forEach((index) => {
+            const hour = String(index + 1).padStart(2, '0');
+            const text = createSvgElement('text', {
+              x: xFor(index),
+              y: height - 10,
+              'text-anchor': index === 0 ? 'start' : index === 23 ? 'end' : 'middle',
+              class: 'chart-label',
+              'aria-hidden': 'true',
+            });
+            text.textContent = `${hour}:00`;
+            svg.append(text);
+          });
+
+          [maximum, minimum].forEach((value) => {
+            const text = createSvgElement('text', {
+              x: padding.left - 8,
+              y: yFor(value) + 4,
+              'text-anchor': 'end',
+              class: 'chart-label',
+              'aria-hidden': 'true',
+            });
+            text.textContent = toInput(value);
+            svg.append(text);
+          });
+
+          container.replaceChildren(svg);
+        }
+
         function renderAll() {
           renderInputs(
             'curve-2026',
@@ -445,6 +615,8 @@
             '2027 客户负荷曲线',
             state.customer2027,
           );
+          renderCurveChart('curve-chart-2026', state.noPv2026, '2026 无光伏客户负荷曲线');
+          renderCurveChart('curve-chart-2027', state.customer2027, '2027 客户负荷曲线');
           renderResults();
         }
 
@@ -454,12 +626,19 @@
           if (!input) return;
 
           state[input.dataset.curve][Number(input.dataset.index)] = input.value;
+          renderCurveChart(
+            input.dataset.curve === 'noPv2026' ? 'curve-chart-2026' : 'curve-chart-2027',
+            state[input.dataset.curve],
+            input.dataset.curve === 'noPv2026'
+              ? '2026 无光伏客户负荷曲线'
+              : '2027 客户负荷曲线',
+          );
           renderResults();
         });
 
         document.getElementById('reset-button').addEventListener('click', () => {
-          state.noPv2026 = [...core.defaults.noPv2026];
-          state.customer2027 = [...core.defaults.customer2027];
+          state.noPv2026 = Array(24).fill(0);
+          state.customer2027 = Array(24).fill(0);
           renderAll();
         });
 
