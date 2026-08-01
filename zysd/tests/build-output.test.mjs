@@ -14,5 +14,21 @@ test('build output includes assets under the /zysd/ base path', () => {
   );
 
   const html = fs.readFileSync(outputFile, 'utf8');
-  assert.match(html, /\/zysd\/assets\//);
+  const assetReferences = [
+    ...html.matchAll(/(?:src|href)="(\/zysd\/assets\/[^"?]+)(?:\?[^\"]*)?"/g),
+  ].map((match) => match[1]);
+
+  assert.ok(
+    assetReferences.length > 0,
+    'Expected built HTML to reference at least one /zysd/assets/ file.',
+  );
+
+  for (const assetReference of assetReferences) {
+    const assetFile = path.join(
+      projectRoot,
+      'dist',
+      assetReference.slice('/zysd/'.length),
+    );
+    assert.ok(fs.existsSync(assetFile), `Expected built asset at ${assetFile}.`);
+  }
 });
