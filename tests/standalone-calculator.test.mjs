@@ -73,3 +73,16 @@ test('standalone core recalculates after an input changes', () => {
   assert.notEqual(updated.curve2026, original.curve2026);
   assertClose(updated.curve2027, original.curve2027);
 });
+
+test('repository is ready for branch-based GitHub Pages publishing', () => {
+  assert.equal(
+    fs.existsSync(path.join(repositoryRoot, '.nojekyll')),
+    true,
+    'Expected a root .nojekyll file for direct static publishing.',
+  );
+  assert.equal(
+    fs.existsSync(path.join(repositoryRoot, '.github', 'workflows', 'deploy.yml')),
+    false,
+    'Expected the competing custom Pages workflow to be removed.',
+  );
+});
