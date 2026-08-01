@@ -11,6 +11,7 @@ const repositoryRoot = path.resolve(
 );
 const zysdDirectory = path.join(repositoryRoot, 'zysd');
 const indexFile = path.join(zysdDirectory, 'index.html');
+const rootIndexFile = path.join(repositoryRoot, 'index.html');
 
 function readPage() {
   return fs.readFileSync(indexFile, 'utf8');
@@ -88,12 +89,31 @@ test('repository is ready for branch-based GitHub Pages publishing', () => {
   );
 });
 
-test('calculator is published only as zysd/index.html', () => {
+test('root Pages entry redirects to the standalone calculator', () => {
   assert.equal(
-    fs.existsSync(path.join(repositoryRoot, 'index.html')),
-    false,
-    'Expected the duplicate root index.html to be absent.',
+    fs.existsSync(rootIndexFile),
+    true,
+    'Expected a root index.html entry for GitHub Pages.',
   );
+
+  const rootPage = fs.readFileSync(rootIndexFile, 'utf8');
+  const redirectScript = extractInlineScript(rootPage, 'pages-redirect');
+  let redirectedTo = null;
+  const context = vm.createContext({
+    window: {
+      location: {
+        replace(destination) {
+          redirectedTo = destination;
+        },
+      },
+    },
+  });
+
+  vm.runInContext(redirectScript, context);
+  assert.equal(redirectedTo, './zysd/index.html');
+});
+
+test('zysd contains only the standalone calculator entry', () => {
   assert.deepEqual(
     fs.readdirSync(zysdDirectory, { withFileTypes: true })
       .map((entry) => entry.name)
