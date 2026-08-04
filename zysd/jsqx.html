@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="根据全省负荷与客户负荷加权均价，实时计算江苏电力曲线优势。"
+    />
+    <title>江苏电力曲线计算器</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+      :root {
+        color: #1e293b;
+        background: #f1f5f9;
+        font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+        font-synthesis: none;
+        --primary: #2563eb;
+        --primary-soft: #eff4ff;
+        --primary-dark: #1d4ed8;
+        --border: #e2e8f0;
+        --border-light: #f1f5f9;
+        --text-2: #64748b;
+        --text-3: #94a3b8;
+        --card: #ffffff;
+        --shadow-sm: 0 1px 2px rgb(15 23 42 / 4%);
+        --shadow-md: 0 4px 12px rgb(15 23 42 / 6%);
+        --radius-sm: 10px;
+        --radius-md: 14px;
+        --radius-lg: 18px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        padding: 32px 20px 56px;
+        background:
+          radial-gradient(ellipse at 50% 0%, #dbeafe 0%, transparent 50%),
+          #f1f5f9;
+      }
+
+      button, input { font: inherit; }
+
+      button:focus-visible, input:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      .app-shell {
+        width: min(1560px, 100%);
+        margin: 0 auto;
+      }
+
+      /* ── 顶部 ── */
+      .topbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .section-label {
+        display: none;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: clamp(1.6rem, 3vw, 2.1rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .intro {
+        margin: 6px 0 0;
+        color: var(--text-2);
+        font-size: 0.9rem;
+        font-weight: 400;
+      }
+
+      .reset-button {
+        flex: 0 0 auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 10px 18px;
+        color: #475569;
+        background: var(--card);
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+        transition: all 180ms ease;
+      }
+
+      .reset-button:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+
+      /* ── 结果条（KPI 卡片） ── */
+      .result-strip {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+        margin-bottom: 24px;
+      }
+
+      .result-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 28px;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        border-radius: var(--radius-md);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 200ms ease;
+      }
+
+      .result-card:hover {
+        box-shadow: var(--shadow-md);
+      }
+
+      .result-card span {
+        color: var(--text-2);
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .result-card output {
+        color: var(--primary);
+        font-size: 2.1rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+        transition: color 180ms ease;
+      }
+
+      /* ── 双列布局 ── */
+      .panels {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+
+      .curve-panel {
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-light);
+      }
+
+      .panel-kicker {
+        margin: 0 0 4px;
+        color: var(--text-3);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1.02rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .unit {
+        color: var(--text-3);
+        font-size: 0.78rem;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+
+      .tool-button {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 14px;
+        color: #475569;
+        background: var(--card);
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 160ms ease;
+      }
+
+      .tool-button:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      .tool-button.primary {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-soft);
+      }
+
+      .tool-button.primary:hover {
+        background: var(--primary-dark);
+        color: #fff;
+        border-color: var(--primary-dark);
+      }
+
+      /* ── 自有光伏面板 ── */
+      .pv-panel {
+        margin-top: 24px;
+        padding: 24px 28px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .pv-panel .panel-kicker {
+        margin-bottom: 16px;
+      }
+
+      .pv-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .pv-field {
+        display: grid;
+        gap: 5px;
+      }
+
+      .pv-field label {
+        color: var(--text-3);
+        font-size: 0.7rem;
+        font-weight: 600;
+      }
+
+      .pv-field input {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 12px;
+        color: #0f172a;
+        background: #f8fafc;
+        font-size: 0.84rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+        transition: border-color 150ms ease, box-shadow 150ms ease;
+      }
+
+      .pv-field input:hover { border-color: #cbd5e1; }
+
+      .pv-field input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgb(37 99 235 / 10%);
+        outline: none;
+        background: #fff;
+      }
+
+      .pv-field output {
+        display: block;
+        padding: 11px 13px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 0.88rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .pv-divider {
+        margin: 18px 0;
+        border: 0;
+        border-top: 1px solid var(--border-light);
+      }
+
+      @media (max-width: 640px) {
+        .pv-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      /* ── 输入网格 ── */
+      .curve-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .hour-input {
+        display: grid;
+        gap: 5px;
+        color: var(--text-3);
+        font-size: 0.68rem;
+        font-weight: 600;
+      }
+
+      .hour-input input {
+        appearance: textfield;
+        width: 100%;
+        min-width: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 6px;
+        color: #0f172a;
+        background: #f8fafc;
+        font-size: 0.78rem;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        transition: all 150ms ease;
+      }
+
+      .hour-input input::-webkit-inner-spin-button,
+      .hour-input input::-webkit-outer-spin-button {
+        margin: 0;
+        appearance: none;
+      }
+
+      .hour-input input:hover {
+        border-color: #cbd5e1;
+        background: #fff;
+      }
+
+      .hour-input input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgb(37 99 235 / 10%);
+        outline: none;
+        background: #fff;
+      }
+
+      /* ── 图表 ── */
+      .curve-chart {
+        margin-top: 20px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #f8fafc;
+      }
+
+      .curve-chart svg {
+        display: block;
+        width: 100%;
+        height: 180px;
+        overflow: visible;
+      }
+
+      .chart-grid-line {
+        stroke: #e8eef5;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-zero-line {
+        stroke: #cbd5e1;
+        stroke-dasharray: 4 4;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-area {
+        fill: rgb(37 99 235 / 8%);
+        stroke: none;
+      }
+
+      .chart-line {
+        fill: none;
+        stroke: var(--primary);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2.5;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-point {
+        fill: #fff;
+        stroke: var(--primary);
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-label {
+        fill: var(--text-3);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      @media (max-width: 1100px) {
+        .panels { grid-template-columns: 1fr; }
+        .curve-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      }
+
+      @media (max-width: 640px) {
+        .app-shell { padding: 0; }
+        body { padding: 18px 12px 36px; }
+
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .reset-button { width: 100%; }
+
+        .result-strip { grid-template-columns: 1fr; }
+        .result-card { border-left-width: 4px; }
+
+        .curve-panel { padding: 18px 14px; }
+
+        .panel-heading {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .curve-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px 10px;
+        }
+
+        .curve-chart { padding: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell" id="app">
+      <header class="topbar">
+        <div>
+          <h1>江苏电力曲线计算器</h1>
+          <p class="intro">基于全省负荷与客户负荷加权均价，实时比较曲线优势。</p>
+        </div>
+        <button class="reset-button" id="reset-button" type="button">恢复默认值</button>
+      </header>
+
+      <section class="result-strip" aria-label="计算结果" aria-live="polite">
+        <article class="result-card">
+          <span>2026 曲线优势 /厘</span>
+          <output id="result-2026">--</output>
+        </article>
+        <article class="result-card">
+          <span>2027 曲线优势 /厘</span>
+          <output id="result-2027">--</output>
+        </article>
+      </section>
+
+      <div class="panels">
+        <section class="curve-panel" aria-labelledby="curve-2026-title">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">负荷输入</p>
+              <h2 id="curve-2026-title">2026 无光伏客户负荷曲线</h2>
+            </div>
+            <div class="panel-actions">
+              <span class="unit">单位：MWh/kWh</span>
+              <button class="tool-button" type="button" data-action="download" data-curve="noPv2026">下载模板</button>
+              <button class="tool-button primary" type="button" data-action="upload" data-curve="noPv2026">上传Excel</button>
+              <input class="file-input" type="file" accept=".xlsx,.xls" data-curve="noPv2026" hidden>
+            </div>
+          </div>
+          <div
+            class="curve-grid"
+            id="curve-2026"
+            role="group"
+            aria-label="2026 无光伏客户负荷曲线"
+          ></div>
+          <div
+            class="curve-chart"
+            id="curve-chart-2026"
+            aria-label="2026 无光伏客户负荷曲线预览"
+          ></div>
+        </section>
+
+        <section class="curve-panel" aria-labelledby="curve-2027-title">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">负荷输入</p>
+              <h2 id="curve-2027-title">2027 无光伏客户负荷曲线</h2>
+            </div>
+            <div class="panel-actions">
+              <span class="unit">单位：MWh/kWh</span>
+              <button class="tool-button" type="button" data-action="download" data-curve="customer2027">下载模板</button>
+              <button class="tool-button primary" type="button" data-action="upload" data-curve="customer2027">上传Excel</button>
+              <input class="file-input" type="file" accept=".xlsx,.xls" data-curve="customer2027" hidden>
+            </div>
+          </div>
+          <div
+            class="curve-grid"
+            id="curve-2027"
+            role="group"
+            aria-label="2027 无光伏客户负荷曲线"
+          ></div>
+          <div
+            class="curve-chart"
+            id="curve-chart-2027"
+            aria-label="2027 无光伏客户负荷曲线预览"
+          ></div>
+        </section>
+      </div>
+
+      <section class="pv-panel" aria-label="自有光伏影响" aria-live="polite">
+        <p class="panel-kicker">自有光伏影响</p>
+        <div class="pv-row">
+          <div class="pv-field">
+            <label for="pv-monthly-gen">光伏月发电量 (MWh)</label>
+            <input id="pv-monthly-gen" type="number" step="any" inputmode="decimal" min="0" value="75">
+          </div>
+          <div class="pv-field">
+            <label for="pv-monthly-consume">月用电量不含光伏 (MWh)</label>
+            <input id="pv-monthly-consume" type="number" step="any" inputmode="decimal" min="0" value="675">
+          </div>
+          <div class="pv-field">
+            <label>光伏发电占比</label>
+            <output id="pv-ratio">10.00%</output>
+          </div>
+        </div>
+        <hr class="pv-divider">
+        <div class="pv-row">
+          <div class="pv-field">
+            <label>2026 度电影响 /厘</label>
+            <output id="pv-impact-2026">--</output>
+          </div>
+          <div class="pv-field">
+            <label>2027 度电影响 /厘</label>
+            <output id="pv-impact-2027">--</output>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script id="calculator-core">
+      (() => {
+        'use strict';
+
+        // @@@CONFIG:MARKET_CURVE_2026@@@
+        const MARKET_CURVE_2026 = [
+          341.377140969022, 340.47668641193036, 343.8441940924219, 340.51015031362004, 339.7030570276497, 338.1970044482847,
+          327.7814617895545, 322.39622420634925, 317.7180244175627, 311.44867191500254, 311.15194252432156, 305.9778002752176,
+          307.2920234895033, 308.546908250128, 311.02408733358936, 322.58485000640036, 338.9910652521761, 344.095083141321,
+          346.0136358806963, 343.6193071556579, 342.029266641065, 340.78107771531853, 342.0506378968254, 338.2072960189452
+        ];
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:PROVINCE_LOAD@@@
+        const PROVINCE_LOAD = [
+          349170.991044776, 339840.463681592, 340498.999502488, 333618.408457711, 330547.001492537, 331382.034825871,
+          320328.130845771, 321496.023880597, 324319.528358209, 316296.960199005, 314252.767164179, 294630.305472637,
+          291385.494029851, 296010.185572139, 301095.057711443, 324326.571144279, 356024.695522388, 374948.485572139,
+          388228.758208955, 390455.511442786, 387979.269154229, 379853.138308458, 372049.232338308, 353026.365671642
+        ];
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:DELTA_2027@@@
+        const DELTA_2027 = [
+          15, 15, 20, 20, 20, 20,
+          15, 15, -10, -30, -80, -100,
+          -100, -80, -30, -10, 15, 20,
+          30, 30, 30, 25, 20, 15
+        ];
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:DEFAULT_NO_PV_2026@@@
+        const DEFAULT_NO_PV_2026 = [
+          353.66295, 390.1852, 373.8537, 376.16115, 374.91665, 365.9704,
+          338.6796, 281.16485, 237.2574, 200.42405, 158.20555, 146.7185,
+          138.7852, 165.9648, 195.06115, 250.00555, 292.61665, 350.56485,
+          381.3167, 391.3037, 394.38145, 392.58885, 388.60925, 385.0037
+        ];
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:DEFAULT_CUSTOMER_2027@@@
+        const DEFAULT_CUSTOMER_2027 = [
+          9945.1357, 12348.4724, 12188.5427, 12216.3668, 12316.005, 13374.8844,
+          14851.5075, 15569.4523, 15925.3467, 16259.0251, 16344.9246, 16528.2211,
+          16468.0352, 16086.3618, 16357.3317, 16696.7487, 16828.0754, 17174.5025,
+          17198.1658, 17166.4422, 16981.9698, 16593.5377, 15981.1558, 19826.7286
+        ];
+        // @@@CONFIG_END@@@
+
+        const marketCurve2027 = MARKET_CURVE_2026.map(
+          (value, index) => value + DELTA_2027[index],
+        );
+
+        function toNumbers(values) {
+          return values.map((value) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+          });
+        }
+
+        function weightedPrice(priceCurve, loadCurve) {
+          const totalLoad = loadCurve.reduce((total, value) => total + value, 0);
+          if (totalLoad === 0) return null;
+
+          return priceCurve.reduce(
+            (total, price, index) => total + price * (loadCurve[index] / totalLoad),
+            0,
+          );
+        }
+
+        function calculate(noPv2026, customer2027) {
+          const province2026 = weightedPrice(MARKET_CURVE_2026, PROVINCE_LOAD);
+          const customer2026 = weightedPrice(MARKET_CURVE_2026, toNumbers(noPv2026));
+          const province2027 = weightedPrice(marketCurve2027, PROVINCE_LOAD);
+          const weighted2027 = weightedPrice(marketCurve2027, toNumbers(customer2027));
+
+          return {
+            curve2026:
+              province2026 === null || customer2026 === null
+                ? null
+                : province2026 - customer2026,
+            curve2027:
+              province2027 === null || weighted2027 === null
+                ? null
+                : province2027 - weighted2027,
+            // 全省加权均价，供光伏模块计算"市场均价"
+            marketPrice2026: province2026,
+            marketPrice2027: province2027,
+          };
+        }
+
+        function formatNumber(value) {
+          return value === null || !Number.isFinite(value)
+            ? '--'
+            : value.toLocaleString('zh-CN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+        }
+
+        globalThis.CalculatorCore = Object.freeze({
+          defaults: Object.freeze({
+            noPv2026: Object.freeze([...DEFAULT_NO_PV_2026]),
+            customer2027: Object.freeze([...DEFAULT_CUSTOMER_2027]),
+          }),
+          calculate,
+          formatNumber,
+        });
+      })();
+    </script>
+
+    <script id="calculator-ui">
+      (() => {
+        'use strict';
+
+        const core = globalThis.CalculatorCore;
+        const state = {
+          noPv2026: [...core.defaults.noPv2026],
+          customer2027: [...core.defaults.customer2027],
+        };
+
+        function toInput(value) {
+          return Number(value).toFixed(4).replace(/\.?0+$/, '');
+        }
+
+        function renderInputs(containerId, curveName, label, values) {
+          const container = document.getElementById(containerId);
+          container.replaceChildren();
+
+          values.forEach((value, index) => {
+            const hour = String(index + 1).padStart(2, '0');
+            const wrapper = document.createElement('label');
+            wrapper.className = 'hour-input';
+
+            const caption = document.createElement('span');
+            caption.textContent = `${hour}:00`;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = 'any';
+            input.inputMode = 'decimal';
+            input.value = toInput(value);
+            input.dataset.curve = curveName;
+            input.dataset.index = String(index);
+            input.setAttribute('aria-label', `${label} ${hour}:00`);
+
+            wrapper.append(caption, input);
+            container.append(wrapper);
+          });
+        }
+
+        function renderResults() {
+          const result = core.calculate(state.noPv2026, state.customer2027);
+          document.getElementById('result-2026').textContent = core.formatNumber(result.curve2026);
+          document.getElementById('result-2027').textContent = core.formatNumber(result.curve2027);
+          renderPVImpact(result);
+        }
+
+        // ──── 自有光伏影响 ────
+        // @@@CONFIG:PV_PRICE@@@
+        const PV_PRICE_2026 = 260; // 2026 晴天估价 (元/MWh)
+        const PV_PRICE_2027 = 140; // 2027 晴天估价 (元/MWh)
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:MARKET_AVG@@@
+        const MARKET_AVG_2026 = 311; // 2026 市场均值 (元/MWh)
+        const MARKET_AVG_2027 = 256; // 2027 市场均值 (元/MWh)
+        // @@@CONFIG_END@@@
+
+        function readPvNumber(id) {
+          const parsed = Number(document.getElementById(id).value);
+          return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function calculatePVImpact(result) {
+          const pvGen = readPvNumber('pv-monthly-gen');
+          const pvConsume = readPvNumber('pv-monthly-consume');
+          const total = pvGen + pvConsume;
+          const pvRatio = total > 0 ? pvGen / total : 0;
+
+          // 使用可配置的市场均值，而非全省加权均价
+          const impact2026 = total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * pvGen) / total : 0;
+          const impact2027 = total > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * pvGen) / total : 0;
+
+          return { pvRatio, impact2026, impact2027, total };
+        }
+
+        function renderPVImpact(result) {
+          const { pvRatio, impact2026, impact2027 } = calculatePVImpact(result);
+
+          document.getElementById('pv-ratio').textContent =
+            (pvRatio * 100).toLocaleString('zh-CN', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }) + '%';
+
+          const format = (v) => core.formatNumber(v);
+
+          document.getElementById('pv-impact-2026').textContent = format(impact2026);
+          document.getElementById('pv-impact-2027').textContent = format(impact2027);
+        }
+
+        function createSvgElement(name, attributes = {}) {
+          const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+          Object.entries(attributes).forEach(([attribute, value]) => {
+            element.setAttribute(attribute, String(value));
+          });
+          return element;
+        }
+
+        function renderCurveChart(containerId, values, label) {
+          const container = document.getElementById(containerId);
+          const numericValues = values.map((value) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+          });
+          const width = 960;
+          const height = 200;
+          const padding = { top: 18, right: 16, bottom: 34, left: 54 };
+          const chartWidth = width - padding.left - padding.right;
+          const chartHeight = height - padding.top - padding.bottom;
+          const dataMinimum = Math.min(...numericValues);
+          const dataMaximum = Math.max(...numericValues);
+          const flatPadding = dataMaximum === 0 ? 1 : Math.abs(dataMaximum) * 0.1;
+          const minimum = dataMinimum === dataMaximum
+            ? dataMinimum - flatPadding
+            : Math.min(dataMinimum, 0);
+          const maximum = dataMinimum === dataMaximum
+            ? dataMaximum + flatPadding
+            : Math.max(dataMaximum, 0);
+          const range = maximum - minimum;
+          const xFor = (index) => padding.left + (chartWidth * index) / (numericValues.length - 1);
+          const yFor = (value) => padding.top + ((maximum - value) / range) * chartHeight;
+          const svg = createSvgElement('svg', {
+            viewBox: `0 0 ${width} ${height}`,
+            role: 'img',
+            'aria-label': `${label}，共 24 个小时负荷点`,
+          });
+          const title = createSvgElement('title');
+          title.textContent = `${label}预览`;
+          svg.append(title);
+
+          [0, 0.5, 1].forEach((ratio) => {
+            const y = padding.top + chartHeight * ratio;
+            svg.append(createSvgElement('line', {
+              x1: padding.left,
+              x2: width - padding.right,
+              y1: y,
+              y2: y,
+              class: 'chart-grid-line',
+              'aria-hidden': 'true',
+            }));
+          });
+
+          const zeroY = yFor(0);
+          svg.append(createSvgElement('line', {
+            x1: padding.left,
+            x2: width - padding.right,
+            y1: zeroY,
+            y2: zeroY,
+            class: 'chart-zero-line',
+            'aria-hidden': 'true',
+          }));
+
+          const points = numericValues.map((value, index) => `${xFor(index)},${yFor(value)}`);
+
+          // 渐变面积填充（向下到图表底部）
+          svg.append(createSvgElement('polygon', {
+            points: `${padding.left},${height - padding.bottom} ${points.join(' ')} ${xFor(numericValues.length - 1)},${height - padding.bottom}`,
+            class: 'chart-area',
+            'aria-hidden': 'true',
+          }));
+
+          svg.append(createSvgElement('polyline', {
+            points: points.join(' '),
+            class: 'chart-line',
+            'aria-hidden': 'true',
+          }));
+
+          numericValues.forEach((value, index) => {
+            svg.append(createSvgElement('circle', {
+              cx: xFor(index),
+              cy: yFor(value),
+              r: 3.5,
+              class: 'chart-point',
+              'aria-hidden': 'true',
+            }));
+          });
+
+          // X轴标签：每3小时
+          for (let i = 0; i < 24; i += 3) {
+            const hour = String(i + 1).padStart(2, '0');
+            const text = createSvgElement('text', {
+              x: xFor(i),
+              y: height - 10,
+              'text-anchor': i === 0 ? 'start' : i === 21 ? 'end' : 'middle',
+              class: 'chart-label',
+              'aria-hidden': 'true',
+            });
+            text.textContent = `${hour}:00`;
+            svg.append(text);
+          }
+
+          // Y轴标签：4个均匀刻度
+          const ySteps = 4;
+          for (let step = 0; step <= ySteps; step += 1) {
+            const value = minimum + (range * step) / ySteps;
+            const text = createSvgElement('text', {
+              x: padding.left - 8,
+              y: yFor(value) + 4,
+              'text-anchor': 'end',
+              class: 'chart-label',
+              'aria-hidden': 'true',
+            });
+            const formatted = Number.isInteger(value)
+              ? String(value)
+              : value.toFixed(2).replace(/\.?0+$/, '');
+            text.textContent = formatted;
+            svg.append(text);
+          }
+
+          container.replaceChildren(svg);
+        }
+
+        function renderAll() {
+          renderInputs(
+            'curve-2026',
+            'noPv2026',
+            '2026 无光伏客户负荷曲线',
+            state.noPv2026,
+          );
+          renderInputs(
+            'curve-2027',
+            'customer2027',
+            '2027 无光伏客户负荷曲线',
+            state.customer2027,
+          );
+          renderCurveChart('curve-chart-2026', state.noPv2026, '2026 无光伏客户负荷曲线');
+          renderCurveChart('curve-chart-2027', state.customer2027, '2027 无光伏客户负荷曲线');
+          renderResults();
+        }
+
+        document.getElementById('app').addEventListener('input', (event) => {
+          if (!(event.target instanceof HTMLInputElement)) return;
+          const curveInput = event.target.closest('input[data-curve][data-index]');
+          if (curveInput) {
+            state[curveInput.dataset.curve][Number(curveInput.dataset.index)] = curveInput.value;
+            renderCurveChart(
+              curveInput.dataset.curve === 'noPv2026' ? 'curve-chart-2026' : 'curve-chart-2027',
+              state[curveInput.dataset.curve],
+              curveInput.dataset.curve === 'noPv2026'
+                ? '2026 无光伏客户负荷曲线'
+                : '2027 无光伏客户负荷曲线',
+            );
+          }
+
+          // 光伏面板输入变化时更新光伏影响和含光伏结果
+          if (event.target.id && (
+            event.target.id === 'pv-monthly-gen' ||
+            event.target.id === 'pv-monthly-consume'
+          )) {
+            const result = core.calculate(state.noPv2026, state.customer2027);
+            renderPVImpact(result);
+            return;
+          }
+
+          if (!curveInput) return;
+          renderResults();
+        });
+
+        document.getElementById('reset-button').addEventListener('click', () => {
+          state.noPv2026 = Array(24).fill(0);
+          state.customer2027 = Array(24).fill(0);
+          renderAll();
+        });
+
+        const CURVE_LABELS = {
+          noPv2026: '2026无光伏客户负荷',
+          customer2027: '2027无光伏客户负荷',
+        };
+
+        function requireXlsx() {
+          if (typeof XLSX !== 'undefined') return true;
+          alert('Excel 组件未加载成功，请检查网络连接后刷新页面重试。');
+          return false;
+        }
+
+        function buildTemplateRows(values) {
+          const rows = [['小时', '负荷(MWh/kWh)']];
+          for (let i = 0; i < 24; i += 1) {
+            const hour = String(i + 1).padStart(2, '0');
+            const value = Number(values[i]);
+            rows.push([`${hour}:00`, Number.isFinite(value) ? value : 0]);
+          }
+          return rows;
+        }
+
+        function downloadTemplate(curve) {
+          if (!requireXlsx()) return;
+
+          const worksheet = XLSX.utils.aoa_to_sheet(buildTemplateRows(state[curve]));
+          worksheet['!cols'] = [{ wch: 10 }, { wch: 18 }];
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, '负荷模板');
+          XLSX.writeFile(workbook, `${CURVE_LABELS[curve]}-曲线模板.xlsx`);
+        }
+
+        function hourIndexFromLabel(value) {
+          // 兼容 "01:00"、"1:00"、"01"、"1"、数字 1~24 等格式，返回 0~23；无法识别返回 null
+          if (value === null || value === undefined || value === '') return null;
+          const text = String(value).trim();
+          const match = text.match(/^(\d{1,2})/);
+          if (!match) return null;
+          const hour = Number(match[1]);
+          return hour >= 1 && hour <= 24 ? hour - 1 : null;
+        }
+
+        function handleFileUpload(curve, file) {
+          if (!requireXlsx()) return;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
+              const sheet = workbook.Sheets[workbook.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(sheet, {
+                header: 1,
+                defval: null,
+                blankrows: true,
+              });
+
+              // 按小时列（第 1 列，01:00~24:00 文本）匹配数据位置，空位填 0，
+              // 即使行被删除/插入，数据仍落到正确的小时位置
+              const values = Array(24).fill(0);
+              for (const row of rows) {
+                if (!Array.isArray(row)) continue;
+                const index = hourIndexFromLabel(row[0]);
+                if (index === null) continue;
+
+                const second = row[1];
+                const first = row[0];
+                const parsed =
+                  (second !== null && second !== undefined && second !== '' && Number.isFinite(Number(second)))
+                    ? Number(second)
+                    : (first !== null && first !== undefined && first !== '' && Number.isFinite(Number(first)))
+                      ? Number(first)
+                      : null;
+                if (parsed !== null) values[index] = parsed;
+              }
+
+              if (values.every((value) => value === 0)) {
+                alert('未从 Excel 中读取到数字数据，请确认模板中的负荷列已填写。');
+                return;
+              }
+              state[curve] = values.map((value) => String(value));
+              renderAll();
+            } catch (error) {
+              alert(`读取 Excel 失败：${error.message}`);
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
+        document.getElementById('app').addEventListener('click', (event) => {
+          const button = event.target.closest('button[data-action]');
+          if (!button) return;
+
+          const curve = button.dataset.curve;
+          if (button.dataset.action === 'download') {
+            downloadTemplate(curve);
+          } else if (button.dataset.action === 'upload') {
+            const fileInput = document.querySelector(`.file-input[data-curve="${curve}"]`);
+            fileInput.value = '';
+            fileInput.click();
+          }
+        });
+
+        document.getElementById('app').addEventListener('change', (event) => {
+          const fileInput = event.target.closest('input.file-input');
+          if (!fileInput || !fileInput.files || !fileInput.files.length) return;
+          handleFileUpload(fileInput.dataset.curve, fileInput.files[0]);
+          fileInput.value = '';
+        });
+
+        renderAll();
+      })();
+    </script>
+  </body>
+</html>
