@@ -14,7 +14,8 @@
   6. 删除「申报曲线 vs 基准负荷」卡片及其图表脚本，并让「净方向概率 & 投机头寸」占满整行
   7. 逐小时套利明细删除「基准负荷 / 加权价差 / 投机头寸 / 申报电量」四列
   8. 隐藏套利方案下的「申报逻辑」说明
-  9. 配色主题：深色 → 浅色（白色背景）
+  9. 隐藏顶栏的「生成时间」
+  10. 配色主题：深色 → 浅色（白色背景）
 
 （兼容两套历史模板：早期文件的套利卡片与明细表列名不同，脚本会自动识别。）
 
@@ -305,6 +306,16 @@ REPLACEMENTS = [
         _t(
             """  <p style="display:none;color:var(--muted);font-size:12px;margin-bottom:14px">""",
             """    申报逻辑：""",
+        ),
+    ),
+    # 规则 9：隐藏顶栏的「生成时间」
+    (
+        "隐藏顶栏的「生成时间」",
+        _t(
+            """    <span style="color:var(--muted);font-size:12px">生成时间 <strong id="gentime"></strong></span>""",
+        ),
+        _t(
+            """    <span style="display:none;color:var(--muted);font-size:12px">生成时间 <strong id="gentime"></strong></span>""",
         ),
     ),
 ]
