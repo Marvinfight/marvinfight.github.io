@@ -18,14 +18,18 @@
   10. 隐藏相似日评分明细中的「客户数」「客户罚分」两列
   11. 天气预报与相似日匹配中加入风速图表（使用报告内嵌的 wind 数据）
   12. 配色主题：深色 → 浅色（白色背景）
+  13. 天气数据更新：用 wind_db.py 的 SQLite（关岭/贵阳，Open-Meteo）补数并回写全要素
 
 （兼容两套历史模板：早期文件的套利卡片与明细表列名不同，脚本会自动识别。）
 
 用法：
-  # 【推荐】批量转换脚本所在文件夹下的所有 report_*.html（原地覆盖）
+  # 【推荐】批量转换脚本所在文件夹下的所有 report_*.html（原地覆盖 + 更新天气数据）
   python convert_report.py
 
-  # 只预览效果，不写入文件
+  # 只改版式，不动天气数据
+  python convert_report.py --no-data
+
+  # 只预览效果，不写入文件（也不会联网取数）
   python convert_report.py --dry-run
 
   # 指定要批量转换的文件夹（原地覆盖）
@@ -547,9 +551,43 @@ def convert_file(src: Path, dst: Path, write=True, verbose=False):
     return {"applied": applied, "skipped": skipped, "residual": residual}
 
 
+def load_weather_pipeline():
+    """延迟导入同目录下的 wind_db（数据管道）。"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import wind_db  # noqa: PLC0415
+
+        return wind_db
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [!] 无法加载 wind_db，已跳过天气数据更新：{exc}")
+        return None
+
+
+def update_data(path, pipeline, quiet=True):
+    """用 SQLite 里的关岭/贵阳数据回写报告；返回统计或 None。"""
+    if pipeline is None:
+        return None
+    try:
+        return pipeline.update_report_data(path, quiet=quiet)
+    except Exception as exc:  # noqa: BLE001
+        print(f"        天气数据更新失败：{exc}")
+        return None
+
+
+def inject_only_data(path, pipeline):
+    """只回写（数据已在批量规划阶段一次性补齐）；返回统计或 None。"""
+    if pipeline is None:
+        return None
+    try:
+        return pipeline.inject_only(path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"        天气数据回写失败：{exc}")
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser(
-        description="把原始贵州电力套利报告 HTML 转换为定制版本",
+        description="把原始贵州电力套利报告 HTML 转换为定制版本（含天气数据更新）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("inputs", nargs="*", help="待转换的 HTML 文件（留空则批量转换脚本所在文件夹）")
@@ -558,7 +596,15 @@ def main():
     ap.add_argument("--in-place", action="store_true", help="单文件模式：直接覆盖原文件")
     ap.add_argument("--copy", action="store_true", help="批量模式：输出 report_xxx_converted.html，不覆盖原文件")
     ap.add_argument("--dry-run", action="store_true", help="只预览，不写入文件")
+    ap.add_argument(
+        "--no-data",
+        action="store_true",
+        help="只改版式，不更新天气数据（默认会用 wind_db 补数并回写）",
+    )
     args = ap.parse_args()
+
+    pipeline = None if args.no_data else load_weather_pipeline()
+    with_data = pipeline is not None and not args.dry_run
 
     # ── 批量模式：未指定具体文件 ──
     if not args.inputs:
@@ -569,14 +615,35 @@ def main():
             return 1
 
         print(f"批量转换 {len(targets)} 个文件（目录：{folder}）"
-              + ("  [预览模式，不写入]" if args.dry_run else ""))
+              + ("  [预览模式，不写入]" if args.dry_run else "")
+              + ("" if args.no_data else "  [含天气数据更新]"))
         changed = 0
+        data_total = {"applied": 0, "missing": 0}
+
+        # 数据步骤：先统一规划（合并所有报告的日期、去重），只补缺失的
+        if with_data:
+            print("  规划天气数据：合并所有报告的日期需求…")
+            plan = pipeline.prepare_reports(targets, quiet=True)
+            print(f"    报告 {plan['reports']} 个 → 唯一日期 {plan['unique_dates']} 个；"
+                  f"已有 {plan['present']} 项，需补抓 {plan['missing']} 项"
+                  f"（合并为 {plan['planned_calls']} 个区间，实际请求 {plan['calls']} 次）")
+            if plan["failed"]:
+                print(f"    补抓失败 {len(plan['failed'])} 项：{', '.join(plan['failed'][:5])}")
+
         for src in targets:
             dst = src.with_name(src.stem + "_converted.html") if args.copy else src
             res = convert_file(src, dst, write=not args.dry_run, verbose=False)
             if res["applied"]:
                 changed += 1
-        print(f"\n完成：共 {len(targets)} 个文件，其中 {changed} 个发生了改动。")
+            if with_data:
+                out = inject_only_data(dst, pipeline)
+                if out:
+                    data_total["applied"] += out["applied"]
+                    data_total["missing"] += out["missing"]
+                    print(f"        数据：回写 {out['applied']} 处，缺失 {out['missing']} 处")
+        print(f"\n完成：共 {len(targets)} 个文件，其中 {changed} 个版式有改动。")
+        if with_data:
+            print(f"天气数据：回写 {data_total['applied']} 处，缺失 {data_total['missing']} 处。")
         return 0
 
     # ── 单文件模式 ──
@@ -596,6 +663,10 @@ def main():
         else:
             dst = src.with_name(src.stem + "_converted.html")
         convert_file(src, dst, write=not args.dry_run, verbose=True)
+        if with_data:
+            out = update_data(dst, pipeline, quiet=False)
+            if out:
+                print(f"  [OK ] 天气数据：回写 {out['applied']} 处，补抓 {out['fetched']} 条，缺失 {out['missing']} 处")
 
     return 0
 
