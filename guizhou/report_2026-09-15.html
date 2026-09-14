@@ -375,7 +375,8 @@
       <div class="card-title"><div class="dot" style="background:#a8dadc"></div>关岭 · 云量24h曲线匹配</div>
       <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>
     </div>
-    <div class="card">
+    <!-- 相似日 历史负荷曲线（已隐藏） -->
+    <div class="card" style="display:none">
       <div class="card-title"><div class="dot" style="background:#a8dadc"></div>相似日 历史负荷曲线</div>
       <canvas id="chart-sim-load"></canvas>
     </div>
@@ -400,21 +401,15 @@
 
   <!-- ⑤ 套利方案 -->
   <div class="section-title"><span>05</span> 套利方案规划</div>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+  <p style="display:none;color:var(--muted);font-size:12px;margin-bottom:14px">
     申报逻辑：<strong style="color:#64ffda">价差&gt;0（日前便宜）→ 多申报日前，锁定低价</strong>；
     <strong style="color:#ff6b6b">价差&lt;0（实时便宜）→ 少申报日前，偏差量走实时低价结算</strong>。
     投机头寸按<strong>相似日价差方向概率</strong>分配：净方向概率（看多%−看空%）× 基准负荷 × 方向上限；
     多头上限 10.0%，空头上限 10.0%，净概率低于 20.0% 时不建仓。
   </p>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title"><div class="dot"></div>申报曲线 vs 基准负荷</div>
-      <canvas id="chart-arb-load"></canvas>
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="dot" style="background:#ffd166"></div>净方向概率 & 投机头寸</div>
-      <canvas id="chart-arb-pos"></canvas>
-    </div>
+  <div class="card">
+    <div class="card-title"><div class="dot" style="background:#ffd166"></div>净方向概率 & 投机头寸</div>
+    <canvas id="chart-arb-pos"></canvas>
   </div>
 
   <!-- 详细表格 -->
@@ -5597,19 +5592,12 @@ function buildCustomLegend(chart, canvasId) {
 
 // ① 概览统计
 (function() {
-  const arb   = D.arbitrage;
-  const base  = arb.base.reduce((s,v)=>s+v,0);
-  const decl  = arb.declared.reduce((s,v)=>s+v,0);
-  const maxPos= Math.max(...arb.pos.map(Math.abs));
-  const wSpr  = arb.spread.reduce((s,v)=>s+v,0)/24;
   const tc    = D.target_calendar;
   const tagCls = {weekday:'tag-work',makeup:'tag-makeup',weekend:'tag-weekend',holiday:'tag-holiday'};
   const stats = [
     { lbl:'申报日期', val: `${tc.weekday} <span class="tag ${tagCls[tc.day_type]}">${tc.day_type_cn}</span>`, raw:true },
     { lbl:'月份 / 季节', val: `${tc.month}月 · ${tc.season}季`, cls:'neutral' },
-    { lbl:'基准负荷总量', val: base.toFixed(2)+' MWh' + (D.any_cust_mismatch ? ' <small style="color:#ffd166">已缩放</small>' : ''), raw: D.any_cust_mismatch, cls:'neutral' },
-    { lbl:'申报电量总量', val: decl.toFixed(2)+' MWh', cls: decl>base?'positive':'negative' },
-    { lbl:'预期平均价差', val: wSpr.toFixed(1)+' ¥/MWh', cls: wSpr>0?'positive':'negative' },
+    { lbl:'装机容量', val: '80 MW', cls:'neutral' },
   ];
   document.getElementById('stats-row').innerHTML = stats.map(s =>
     `<div class="stat-box"><div class="stat-val ${s.cls||''}">${s.raw?s.val:s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`
@@ -5882,17 +5870,6 @@ let spreadChart = null, priceChart = null;
 
 // ⑤ 套利方案
 const arb = D.arbitrage;
-mkChart('chart-arb-load', {
-  type:'line', data:{
-    labels: HL,
-    datasets:[
-      { label:'基准负荷', data:arb.base, borderColor:'#8892b0', backgroundColor:'rgba(136,146,176,0.1)', fill:true, tension:0.4, borderWidth:2, pointRadius:0 },
-      { label:'申报电量', data:arb.declared, borderColor:'#64ffda', backgroundColor:'rgba(100,255,218,0.15)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:0 },
-    ]
-  },
-  options: opts({ scales:{ y:{ title:{ display:true, text:'电量(MWh)', color:'#8892b0' } } } })
-});
-
 mkChart('chart-arb-pos', {
   type:'bar', data:{
     labels: HL,
@@ -5915,16 +5892,12 @@ mkChart('chart-arb-pos', {
   const tbl = document.getElementById('arb-table');
   const thresh = D.min_prob_threshold || 0;
   const thead = `<thead><tr>
-    <th>时段</th><th>基准负荷(MWh)</th><th>加权价差(¥/MWh)</th>
-    <th>看多概率</th><th>看空概率</th><th>净方向概率</th>
-    <th>投机头寸(MWh)</th><th>头寸比例</th><th>申报电量(MWh)</th>
+    <th>时段</th><th>看多概率</th><th>看空概率</th><th>净方向概率</th><th>头寸比例</th>
   </tr></thead>`;
   let tbody = '<tbody>';
   for (let h=0; h<24; h++) {
-    const pos  = arb.pos[h], pct = arb.pct[h], spr = arb.spread[h];
+    const pct  = arb.pct[h];
     const pl   = arb.prob_long[h], ps = arb.prob_short[h], np = arb.net_prob[h];
-    const pCls = pos > 0 ? 'positive' : pos < 0 ? 'negative' : '';
-    const sCls = spr > 0 ? 'negative' : spr < 0 ? 'positive' : '';
     const npCls = np > 0 ? 'positive' : np < 0 ? 'negative' : '';
     const pill = pct > 0 ? `<span class="pill pill-pos">+${pct.toFixed(1)}%</span>` :
                  pct < 0 ? `<span class="pill pill-neg">${pct.toFixed(1)}%</span>` :
@@ -5935,14 +5908,10 @@ mkChart('chart-arb-pos', {
       : `<span style="color:#555;font-size:0.85em">${(np*100).toFixed(1)}% <em>(低于阈值)</em></span>`;
     tbody += `<tr>
       <td>${HL[h]}</td>
-      <td>${arb.base[h].toFixed(3)}</td>
-      <td class="${sCls}">${spr.toFixed(2)}</td>
       <td class="positive">${(pl*100).toFixed(1)}%</td>
       <td class="negative">${(ps*100).toFixed(1)}%</td>
       <td>${npBar}</td>
-      <td class="${pCls}">${pos >= 0 ? '+' : ''}${pos.toFixed(3)}</td>
       <td>${pill}</td>
-      <td><strong>${arb.declared[h].toFixed(3)}</strong></td>
     </tr>`;
   }
   tbody += '</tbody>';
