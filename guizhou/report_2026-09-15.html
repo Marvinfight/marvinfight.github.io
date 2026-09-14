@@ -324,6 +324,14 @@
       <div class="card-title"><div class="dot" style="background:#f4a261"></div>贵阳 · 云量 & 辐射</div>
       <canvas id="chart-tg-cloud"></canvas>
     </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>关岭 · 风速</div>
+      <canvas id="chart-tw-wind"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>贵阳 · 风速</div>
+      <canvas id="chart-tg-wind"></canvas>
+    </div>
   </div>
 
   <!-- ③ 相似历史日 -->
@@ -374,6 +382,14 @@
     <div class="card">
       <div class="card-title"><div class="dot" style="background:#64748b"></div>关岭 · 云量24h曲线匹配</div>
       <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>关岭 · 风速24h曲线匹配</div>
+      <canvas id="chart-match-tw-wind" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>贵阳 · 风速24h曲线匹配</div>
+      <canvas id="chart-match-tg-wind" style="max-height:240px"></canvas>
     </div>
     <!-- 相似日 历史负荷曲线（已隐藏） -->
     <div class="card" style="display:none">
@@ -5650,14 +5666,35 @@ mkChart('chart-tg-cloud', {
   options: opts({ scales:{ yC:{ position:'left', ticks:{color:'#f4a261',font:{size:10}}, grid:{color:'#e5e7eb'} }, yR:{ position:'right', ticks:{color:'#d97706',font:{size:10}}, grid:{display:false} }, x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'#e5e7eb'}} } })
 });
 
+// ②-B 风速图（关岭 / 贵阳）
+mkChart('chart-tw-wind', {
+  type:'line', data:{
+    labels: HL,
+    datasets:[
+      { label:'风速(m/s)', data: noNull(D.weather_w.wind), borderColor:'#0284c7', backgroundColor:'rgba(2,132,199,0.12)', fill:true, tension:0.4, pointRadius:0 },
+    ]
+  },
+  options: opts({ scales:{ y:{ beginAtZero:true, title:{ display:true, text:'风速(m/s)', color:'#6b7280' } } } })
+});
+
+mkChart('chart-tg-wind', {
+  type:'line', data:{
+    labels: HL,
+    datasets:[
+      { label:'风速(m/s)', data: noNull(D.weather_g.wind), borderColor:'#d97706', backgroundColor:'rgba(217,119,6,0.12)', fill:true, tension:0.4, pointRadius:0 },
+    ]
+  },
+  options: opts({ scales:{ y:{ beginAtZero:true, title:{ display:true, text:'风速(m/s)', color:'#6b7280' } } } })
+});
+
 // ③-A 日历相似度评分明细表
 (function() {
   const tc   = D.target_calendar;
   const tagCls = {weekday:'tag-work',makeup:'tag-makeup',weekend:'tag-weekend',holiday:'tag-holiday'};
   const thead = `<thead><tr>
     <th>历史日期</th><th>星期</th><th>日期类型</th><th>月份</th><th>季节</th>
-    <th>客户数<br><small style="color:#6b7280">目标:3</small></th>
-    <th title="最大0.60">客户罚分</th>
+    <th style="display:none">客户数<br><small style="color:#6b7280">目标:3</small></th>
+    <th title="最大0.60" style="display:none">客户罚分</th>
     <th title="最大0.16">类型罚分</th>
     <th title="最大0.08">星期罚分</th>
     <th title="最大0.08">月份罚分</th>
@@ -5683,8 +5720,8 @@ mkChart('chart-tg-cloud', {
       <td>${tagEl}</td>
       <td>${s.month}月</td>
       <td>${s.season}季</td>
-      <td style="text-align:center">${custWarn}</td>
-      <td>${bar(cd.cust_count||0, 0.24)}</td>
+      <td style="display:none;text-align:center">${custWarn}</td>
+      <td style="display:none">${bar(cd.cust_count||0, 0.24)}</td>
       <td>${bar(cd.day_type||0, 0.16)}</td>
       <td>${bar(cd.weekday||0, 0.08)}</td>
       <td>${bar(cd.month||0, 0.08)}</td>
@@ -5747,7 +5784,10 @@ makeOverlayChart('chart-match-tg-temp', D.weather_g.temp, 'weather_g', 0, '温�
 makeOverlayChart('chart-match-tw-rad',  D.weather_w.rad,  'weather_w', 5, '辐射', '#d97706', 'W/m²');
 makeOverlayChart('chart-match-tw-cloud',D.weather_w.cloud,'weather_w', 2, '云量', '#0284c7', '%');
 
-const simLoadChart = mkChart('chart-sim-load', {
+const simLoadChart = makeOverlayChart('chart-match-tw-wind', D.weather_w.wind, 'weather_w', 4, '风速', '#0284c7', 'm/s');
+makeOverlayChart('chart-match-tg-wind', D.weather_g.wind, 'weather_g', 4, '风速', '#d97706', 'm/s');
+
+mkChart('chart-sim-load', {
   type:'line', data:{
     labels: HL,
     datasets: D.similar_days.map(s => ({

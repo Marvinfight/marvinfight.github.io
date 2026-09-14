@@ -15,7 +15,9 @@
   7. 逐小时套利明细删除「基准负荷 / 加权价差 / 投机头寸 / 申报电量」四列
   8. 隐藏套利方案下的「申报逻辑」说明
   9. 隐藏顶栏的「生成时间」
-  10. 配色主题：深色 → 浅色（白色背景）
+  10. 隐藏相似日评分明细中的「客户数」「客户罚分」两列
+  11. 天气预报与相似日匹配中加入风速图表（使用报告内嵌的 wind 数据）
+  12. 配色主题：深色 → 浅色（白色背景）
 
 （兼容两套历史模板：早期文件的套利卡片与明细表列名不同，脚本会自动识别。）
 
@@ -318,7 +320,119 @@ REPLACEMENTS = [
             """    <span style="display:none;color:var(--muted);font-size:12px">生成时间 <strong id="gentime"></strong></span>""",
         ),
     ),
+    # 规则 10：隐藏相似日评分明细中的「客户数」「客户罚分」两列
+    (
+        "隐藏相似日评分明细「客户数」表头",
+        """    <th>客户数<br>""",
+        """    <th style="display:none">客户数<br>""",
+    ),
+    (
+        "隐藏相似日评分明细「客户罚分」表头",
+        """    <th title="最大0.60">客户罚分</th>""",
+        """    <th title="最大0.60" style="display:none">客户罚分</th>""",
+    ),
+    (
+        "隐藏相似日评分明细「客户数」数据列",
+        """      <td style="text-align:center">${custWarn}</td>""",
+        """      <td style="display:none;text-align:center">${custWarn}</td>""",
+    ),
+    (
+        "隐藏相似日评分明细「客户罚分」数据列",
+        """      <td>${bar(cd.cust_count||0, 0.24)}</td>""",
+        """      <td style="display:none">${bar(cd.cust_count||0, 0.24)}</td>""",
+    ),
+    # 规则 11：加入风速图表（使用报告内嵌的 weather_w.wind / weather_g.wind 数据）
+    (
+        "天气预报加入风速图表（关岭/贵阳）",
+        _t(
+            """      <canvas id="chart-tg-cloud"></canvas>""",
+            """    </div>""",
+            """  </div>""",
+        ),
+        _t(
+            """      <canvas id="chart-tg-cloud"></canvas>""",
+            """    </div>""",
+            """    <div class="card">""",
+            """      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>关岭 · 风速</div>""",
+            """      <canvas id="chart-tw-wind"></canvas>""",
+            """    </div>""",
+            """    <div class="card">""",
+            """      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>贵阳 · 风速</div>""",
+            """      <canvas id="chart-tg-wind"></canvas>""",
+            """    </div>""",
+            """  </div>""",
+        ),
+    ),
+    (
+        "加入风速图表脚本（关岭/贵阳）",
+        _t(
+            """// ③-A 日历相似度评分明细表""",
+        ),
+        _t(
+            """// ②-B 风速图（关岭 / 贵阳）""",
+            """mkChart('chart-tw-wind', {""",
+            """  type:'line', data:{""",
+            """    labels: HL,""",
+            """    datasets:[""",
+            """      { label:'风速(m/s)', data: noNull(D.weather_w.wind), borderColor:'#0284c7', backgroundColor:'rgba(2,132,199,0.12)', fill:true, tension:0.4, pointRadius:0 },""",
+            """    ]""",
+            """  },""",
+            """  options: opts({ scales:{ y:{ beginAtZero:true, title:{ display:true, text:'风速(m/s)', color:'#6b7280' } } } })""",
+            """});""",
+            """""",
+            """mkChart('chart-tg-wind', {""",
+            """  type:'line', data:{""",
+            """    labels: HL,""",
+            """    datasets:[""",
+            """      { label:'风速(m/s)', data: noNull(D.weather_g.wind), borderColor:'#d97706', backgroundColor:'rgba(217,119,6,0.12)', fill:true, tension:0.4, pointRadius:0 },""",
+            """    ]""",
+            """  },""",
+            """  options: opts({ scales:{ y:{ beginAtZero:true, title:{ display:true, text:'风速(m/s)', color:'#6b7280' } } } })""",
+            """});""",
+            """""",
+            """// ③-A 日历相似度评分明细表""",
+        ),
+    ),
+    (
+        "24h匹配加入风速图表（关岭/贵阳）",
+        _t(
+            """      <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>""",
+            """    </div>""",
+        ),
+        _t(
+            """      <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>""",
+            """    </div>""",
+            """    <div class="card">""",
+            """      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>关岭 · 风速24h曲线匹配</div>""",
+            """      <canvas id="chart-match-tw-wind" style="max-height:240px"></canvas>""",
+            """    </div>""",
+            """    <div class="card">""",
+            """      <div class="card-title"><div class="dot" style="background:#0ea5e9"></div>贵阳 · 风速24h曲线匹配</div>""",
+            """      <canvas id="chart-match-tg-wind" style="max-height:240px"></canvas>""",
+            """    </div>""",
+        ),
+    ),
+    (
+        "加入相似日风速匹配脚本（关岭/贵阳）",
+        _t(
+            """mkChart('chart-sim-load', {""",
+        ),
+        _t(
+            """makeOverlayChart('chart-match-tw-wind', D.weather_w.wind, 'weather_w', 4, '风速', '#0284c7', 'm/s');""",
+            """makeOverlayChart('chart-match-tg-wind', D.weather_g.wind, 'weather_g', 4, '风速', '#d97706', 'm/s');""",
+            """""",
+            """mkChart('chart-sim-load', {""",
+        ),
+    ),
 ]
+
+# 插入类规则的去重标记：文中已出现该标记则视为已应用，避免重复插入
+INSERT_MARKERS = {
+    "天气预报加入风速图表（关岭/贵阳）": 'id="chart-tw-wind"',
+    "加入风速图表脚本（关岭/贵阳）": "mkChart('chart-tw-wind', {",
+    "24h匹配加入风速图表（关岭/贵阳）": 'id="chart-match-tw-wind"',
+    "加入相似日风速匹配脚本（关岭/贵阳）": "makeOverlayChart('chart-match-tw-wind'",
+}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -367,8 +481,12 @@ def convert(html, nl):
         cnt = html.count(old)
 
         if cnt == 1:
-            html = html.replace(old, new)
-            log.append((name, "已应用"))
+            marker = INSERT_MARKERS.get(name)
+            if marker and marker in html:
+                log.append((name, "跳过（已是定制版）"))
+            else:
+                html = html.replace(old, new)
+                log.append((name, "已应用"))
         elif cnt == 0:
             if new and new in html:
                 log.append((name, "跳过（已是定制版）"))
