@@ -309,7 +309,7 @@
   <div class="section-title"><span>02</span> 申报日天气预报</div>
   <div class="grid-2">
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 温度 & 降水</div>
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>关岭 · 温度 & 降水</div>
       <canvas id="chart-tw-temp"></canvas>
     </div>
     <div class="card">
@@ -317,7 +317,7 @@
       <canvas id="chart-tg-temp"></canvas>
     </div>
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 云量 & 辐射</div>
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>关岭 · 云量 & 辐射</div>
       <canvas id="chart-tw-cloud"></canvas>
     </div>
     <div class="card">
@@ -330,12 +330,12 @@
   <div class="section-title"><span>03</span> 历史相似日分析</div>
   <div class="sim-legend"><span class="legend-dot" style="background:#e63946"></span><strong style="color:#e63946">2026-09-08</strong>&thinsp;周二&thinsp;工作日&thinsp;秋季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.485 天气:0.808 日历:0.0</span>&emsp;<span class="legend-dot" style="background:#2a9d8f"></span><strong style="color:#2a9d8f">2026-09-01</strong>&thinsp;周二&thinsp;工作日&thinsp;秋季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.496 天气:0.827 日历:0.0</span>&emsp;<span class="legend-dot" style="background:#f4a261"></span><strong style="color:#f4a261">2026-09-02</strong>&thinsp;周三&thinsp;工作日&thinsp;秋季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.506 天气:0.822 日历:0.013</span>&emsp;<span class="legend-dot" style="background:#8ecae6"></span><strong style="color:#8ecae6">2026-08-17</strong>&thinsp;周一&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.526 天气:0.799 日历:0.047</span>&emsp;<span class="legend-dot" style="background:#457b9d"></span><strong style="color:#457b9d">2026-09-09</strong>&thinsp;周三&thinsp;工作日&thinsp;秋季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.533 天气:0.866 日历:0.013</span>&emsp;<span class="legend-dot" style="background:#e63946"></span><strong style="color:#e63946">2026-09-07</strong>&thinsp;周一&thinsp;工作日&thinsp;秋季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.546 天气:0.887 日历:0.013</span>&emsp;<span class="legend-dot" style="background:#2a9d8f"></span><strong style="color:#2a9d8f">2026-08-14</strong>&thinsp;周五&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.546 天气:0.787 日历:0.073</span>&emsp;<span class="legend-dot" style="background:#f4a261"></span><strong style="color:#f4a261">2026-08-11</strong>&thinsp;周二&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.575 天气:0.902 日历:0.033</span>&emsp;<span class="legend-dot" style="background:#8ecae6"></span><strong style="color:#8ecae6">2026-08-04</strong>&thinsp;周二&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.577 天气:0.907 日历:0.033</span>&emsp;<span class="legend-dot" style="background:#457b9d"></span><strong style="color:#457b9d">2026-08-13</strong>&thinsp;周四&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.581 天气:0.869 日历:0.06</span></div>
 
-  <!-- 评分公式说明 -->
-  <div class="card" style="margin-bottom:16px;background:rgba(100,255,218,0.04);border-color:rgba(100,255,218,0.2)">
+  <!-- 评分公式说明（已隐藏） -->
+  <div class="card" style="display:none;margin-bottom:16px;background:rgba(100,255,218,0.04);border-color:rgba(100,255,218,0.2)">
     <div class="card-title"><div class="dot" style="background:#64ffda"></div>综合评分计算公式</div>
     <div style="font-size:12px;line-height:2;color:var(--muted)">
       <strong style="color:var(--text)">综合得分 = 天气得分 × 0.60 + 日历罚分 × 0.40</strong>（越低越相似）<br>
-      <strong style="color:#8ecae6">天气得分</strong> = (威宁得分 + 贵阳得分) ÷ 2&emsp;
+      <strong style="color:#8ecae6">天气得分</strong> = (关岭得分 + 贵阳得分) ÷ 2&emsp;
         其中各地得分 = <em>0.65 × L2距离 + 0.35 × 皮尔逊距离</em><br>
       &emsp;L2距离 = Z-score标准化后各时段绝对偏差大小（消除量纲）<br>
       &emsp;皮尔逊距离 = 1 − 加权皮尔逊相关系数（捕捉24h曲线走势形状）<br>
@@ -360,7 +360,7 @@
   </p>
   <div class="grid-2">
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#ff9f43"></div>威宁县 · 温度24h曲线匹配</div>
+      <div class="card-title"><div class="dot" style="background:#ff9f43"></div>关岭 · 温度24h曲线匹配</div>
       <canvas id="chart-match-tw-temp" style="max-height:240px"></canvas>
     </div>
     <div class="card">
@@ -368,11 +368,11 @@
       <canvas id="chart-match-tg-temp" style="max-height:240px"></canvas>
     </div>
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 辐射24h曲线匹配</div>
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>关岭 · 辐射24h曲线匹配</div>
       <canvas id="chart-match-tw-rad" style="max-height:240px"></canvas>
     </div>
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>威宁县 · 云量24h曲线匹配</div>
+      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>关岭 · 云量24h曲线匹配</div>
       <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>
     </div>
     <div class="card">
@@ -380,7 +380,7 @@
       <canvas id="chart-sim-load"></canvas>
     </div>
     <div class="card">
-      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>相似日 降水对比（威宁）</div>
+      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>相似日 降水对比（关岭）</div>
       <canvas id="chart-sim-precip"></canvas>
     </div>
   </div>
@@ -5607,7 +5607,6 @@ function buildCustomLegend(chart, canvasId) {
   const stats = [
     { lbl:'申报日期', val: `${tc.weekday} <span class="tag ${tagCls[tc.day_type]}">${tc.day_type_cn}</span>`, raw:true },
     { lbl:'月份 / 季节', val: `${tc.month}月 · ${tc.season}季`, cls:'neutral' },
-    { lbl:'当前客户数', val: `${tc.cust_count} 个`, cls: D.any_cust_mismatch ? 'negative' : 'positive' },
     { lbl:'基准负荷总量', val: base.toFixed(2)+' MWh' + (D.any_cust_mismatch ? ' <small style="color:#ffd166">已缩放</small>' : ''), raw: D.any_cust_mismatch, cls:'neutral' },
     { lbl:'申报电量总量', val: decl.toFixed(2)+' MWh', cls: decl>base?'positive':'negative' },
     { lbl:'预期平均价差', val: wSpr.toFixed(1)+' ¥/MWh', cls: wSpr>0?'positive':'negative' },
