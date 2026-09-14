@@ -1,0 +1,5954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贵州电力套利分析 · 2026-09-11 (周五)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2d3148;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --accent: #64ffda;
+    --red: #ff6b6b;
+    --green: #64ffda;
+    --yellow: #ffd166;
+    --blue: #8ecae6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-meta { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .cal-badge {
+    display:inline-flex; gap:6px; align-items:center;
+    background:rgba(100,255,218,0.1); border:1px solid rgba(100,255,218,0.3);
+    border-radius:6px; padding:3px 10px; font-size:12px;
+  }
+  .cal-badge span { color:var(--accent); font-weight:700; }
+</style>
+<style>
+  .topbar h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .topbar .meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  @media(max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title span {
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+  canvas { max-height: 280px; }
+  .sim-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .stat-val {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+  .neutral  { color: var(--yellow); }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .tab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(100,255,218,0.1);
+  }
+  .tab:hover { border-color: var(--accent); color: var(--text); }
+  .arb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .arb-table th {
+    background: rgba(255,255,255,0.06);
+    padding: 8px 10px;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .arb-table td {
+    padding: 6px 10px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .arb-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill-pos { background: rgba(100,255,218,0.15); color: var(--green); }
+  .pill-neg { background: rgba(255,107,107,0.15); color: var(--red); }
+  .pill-neu { background: rgba(255,209,102,0.15); color: var(--yellow); }
+  .sim-score-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .sim-score-table th { background:rgba(255,255,255,0.06); padding:7px 10px; text-align:center; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); }
+  .sim-score-table td { padding:6px 10px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .sim-score-table tr:hover td { background:rgba(255,255,255,0.03); }
+  .score-bar { display:inline-block; height:8px; border-radius:4px; vertical-align:middle; margin-left:6px; }
+  .tag { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; }
+  .tag-work { background:rgba(100,255,218,0.15); color:#64ffda; }
+  .tag-weekend { background:rgba(255,209,102,0.15); color:#ffd166; }
+  .tag-holiday { background:rgba(255,107,107,0.15); color:#ff6b6b; }
+  .tag-makeup { background:rgba(142,202,230,0.15); color:#8ecae6; }
+  /* ── 自定义图例 ── */
+  .custom-legend-wrap {
+    margin-bottom: 10px;
+  }
+  .legend-ctrl-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .legend-ctrl-btn {
+    padding: 3px 12px;
+    border-radius: 5px;
+    border: 1px solid rgba(100,255,218,0.4);
+    background: rgba(100,255,218,0.08);
+    color: #64ffda;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .legend-ctrl-btn:hover {
+    background: rgba(100,255,218,0.18);
+    border-color: #64ffda;
+  }
+  .legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    max-height: 110px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .legend-items::-webkit-scrollbar { width: 4px; }
+  .legend-items::-webkit-scrollbar-track { background: transparent; }
+  .legend-items::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 2px; }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 6px 2px 4px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .legend-item:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); }
+  .legend-item-hidden { opacity: 0.35; text-decoration: line-through; }
+  .legend-dot-sq {
+    display: inline-block;
+    width: 22px; height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .legend-dot-sq.dashed {
+    background: repeating-linear-gradient(
+      90deg, currentColor 0, currentColor 4px, transparent 4px, transparent 7px
+    );
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚡ 贵州电力现货套利分析系统</h1>
+  <div class="topbar-meta">
+    <div class="cal-badge">
+      申报日 <span>2026-09-11</span>
+      &nbsp;周五&nbsp;
+      <span id="type-badge-topbar">工作日</span>
+      &nbsp;秋季
+    </div>
+    <span style="color:var(--muted);font-size:12px">多头上限 <strong style="color:#64ffda">10.0%</strong> · 空头上限 <strong style="color:#ff6b6b">10.0%</strong> · 方向阈值 <strong style="color:#ffd166">20.0%</strong></span>
+    <span style="color:var(--muted);font-size:12px">生成时间 <strong id="gentime"></strong></span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ① 概览统计 -->
+  <div class="section-title"><span>01</span> 申报日概览</div>
+  <div class="stats-grid" id="stats-row"></div>
+
+  <!-- ② 天气预报 -->
+  <div class="section-title"><span>02</span> 申报日天气预报</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 温度 & 降水</div>
+      <canvas id="chart-tw-temp"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#f4a261"></div>贵阳 · 温度 & 降水</div>
+      <canvas id="chart-tg-temp"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 云量 & 辐射</div>
+      <canvas id="chart-tw-cloud"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#f4a261"></div>贵阳 · 云量 & 辐射</div>
+      <canvas id="chart-tg-cloud"></canvas>
+    </div>
+  </div>
+
+  <!-- ③ 相似历史日 -->
+  <div class="section-title"><span>03</span> 历史相似日分析</div>
+  <div class="sim-legend"><span class="legend-dot" style="background:#e63946"></span><strong style="color:#e63946">2026-08-07</strong>&thinsp;周五&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.643 天气:1.016 日历:0.033</span>&emsp;<span class="legend-dot" style="background:#2a9d8f"></span><strong style="color:#2a9d8f">2026-07-31</strong>&thinsp;周五&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.647 天气:1.0 日历:0.047</span>&emsp;<span class="legend-dot" style="background:#f4a261"></span><strong style="color:#f4a261">2026-08-20</strong>&thinsp;周四&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.656 天气:1.016 日历:0.047</span>&emsp;<span class="legend-dot" style="background:#8ecae6"></span><strong style="color:#8ecae6">2026-07-29</strong>&thinsp;周三&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.666 天气:0.988 日历:0.073</span>&emsp;<span class="legend-dot" style="background:#457b9d"></span><strong style="color:#457b9d">2026-08-04</strong>&thinsp;周二&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.693 天气:1.033 日历:0.073</span>&emsp;<span class="legend-dot" style="background:#e63946"></span><strong style="color:#e63946">2026-08-21</strong>&thinsp;周五&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.694 天气:1.1 日历:0.033</span>&emsp;<span class="legend-dot" style="background:#2a9d8f"></span><strong style="color:#2a9d8f">2026-06-02</strong>&thinsp;周二&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.694 天气:0.99 日历:0.1</span>&emsp;<span class="legend-dot" style="background:#f4a261"></span><strong style="color:#f4a261">2026-04-08</strong>&thinsp;周三&thinsp;工作日&thinsp;春季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.708 天气:0.957 日历:0.133</span>&emsp;<span class="legend-dot" style="background:#8ecae6"></span><strong style="color:#8ecae6">2026-07-30</strong>&thinsp;周四&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.709 天气:1.081 日历:0.06</span>&emsp;<span class="legend-dot" style="background:#457b9d"></span><strong style="color:#457b9d">2026-06-11</strong>&thinsp;周四&thinsp;工作日&thinsp;夏季&thinsp;<span style="color:#8892b0;font-size:11px">总:0.723 天气:1.082 日历:0.073</span></div>
+
+  <!-- 评分公式说明 -->
+  <div class="card" style="margin-bottom:16px;background:rgba(100,255,218,0.04);border-color:rgba(100,255,218,0.2)">
+    <div class="card-title"><div class="dot" style="background:#64ffda"></div>综合评分计算公式</div>
+    <div style="font-size:12px;line-height:2;color:var(--muted)">
+      <strong style="color:var(--text)">综合得分 = 天气得分 × 0.60 + 日历罚分 × 0.40</strong>（越低越相似）<br>
+      <strong style="color:#8ecae6">天气得分</strong> = (威宁得分 + 贵阳得分) ÷ 2&emsp;
+        其中各地得分 = <em>0.65 × L2距离 + 0.35 × 皮尔逊距离</em><br>
+      &emsp;L2距离 = Z-score标准化后各时段绝对偏差大小（消除量纲）<br>
+      &emsp;皮尔逊距离 = 1 − 加权皮尔逊相关系数（捕捉24h曲线走势形状）<br>
+      &emsp;特征权重: 温度 40% · 降水 20% · 云量 25% · 辐射 15%<br>
+      <strong style="color:#ffd166">日历罚分</strong> = 客户数 + 日期类型 + 星期几 + 月份 + 季节 + 节假日边界（各项最大罚分见明细表）
+    </div>
+  </div>
+
+  <!-- 日历相似度评分明细表 -->
+  <div class="card" style="margin-bottom:16px;overflow-x:auto">
+    <div class="card-title"><div class="dot" style="background:#cdb4db"></div>相似日评分明细</div>
+    <div id="cust-mismatch-warn" style="display:none;color:#ffd166;font-size:12px;margin-bottom:10px;padding:8px 12px;background:rgba(255,209,102,0.1);border-radius:6px;border-left:3px solid #ffd166">
+      ⚠ 部分相似日客户数与申报日不同，基准负荷已按 <strong>客户数比例缩放</strong>，请注意参考价值有限。
+    </div>
+    <table class="sim-score-table" id="cal-score-table"></table>
+  </div>
+
+  <!-- 24时段天气曲线对比：目标日预报 vs 相似日实测 -->
+  <div class="section-title" style="margin-top:4px"><span></span> 24时段天气曲线匹配（申报日预报 vs 相似日实测）</div>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+    粗实线 = 申报日天气预报曲线；细虚线 = 各相似历史日实际天气曲线。曲线越重叠说明匹配质量越高。
+  </p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#ff9f43"></div>威宁县 · 温度24h曲线匹配</div>
+      <canvas id="chart-match-tw-temp" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#f4a261"></div>贵阳 · 温度24h曲线匹配</div>
+      <canvas id="chart-match-tg-temp" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#8ecae6"></div>威宁县 · 辐射24h曲线匹配</div>
+      <canvas id="chart-match-tw-rad" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>威宁县 · 云量24h曲线匹配</div>
+      <canvas id="chart-match-tw-cloud" style="max-height:240px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>相似日 历史负荷曲线</div>
+      <canvas id="chart-sim-load"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#a8dadc"></div>相似日 降水对比（威宁）</div>
+      <canvas id="chart-sim-precip"></canvas>
+    </div>
+  </div>
+
+  <!-- ④ 价差分析 -->
+  <div class="section-title"><span>04</span> 相似日现货价差（实时 - 日前）</div>
+  <div class="card">
+    <div class="tabs" id="spread-tabs"></div>
+    <canvas id="chart-spread" style="max-height:300px"></canvas>
+  </div>
+
+  <div class="section-title" style="margin-top:28px"><span></span> 相似日节点电价详情</div>
+  <div class="card">
+    <div class="tabs" id="price-tabs"></div>
+    <canvas id="chart-price" style="max-height:300px"></canvas>
+  </div>
+
+  <!-- ⑤ 套利方案 -->
+  <div class="section-title"><span>05</span> 套利方案规划</div>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+    申报逻辑：<strong style="color:#64ffda">价差&gt;0（日前便宜）→ 多申报日前，锁定低价</strong>；
+    <strong style="color:#ff6b6b">价差&lt;0（实时便宜）→ 少申报日前，偏差量走实时低价结算</strong>。
+    投机头寸按<strong>相似日价差方向概率</strong>分配：净方向概率（看多%−看空%）× 基准负荷 × 方向上限；
+    多头上限 10.0%，空头上限 10.0%，净概率低于 20.0% 时不建仓。
+  </p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>申报曲线 vs 基准负荷</div>
+      <canvas id="chart-arb-load"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#ffd166"></div>净方向概率 & 投机头寸</div>
+      <canvas id="chart-arb-pos"></canvas>
+    </div>
+  </div>
+
+  <!-- 详细表格 -->
+  <div class="card" style="margin-top:16px;overflow-x:auto">
+    <div class="card-title"><div class="dot" style="background:#cdb4db"></div>逐小时套利明细</div>
+    <table class="arb-table" id="arb-table"></table>
+  </div>
+
+</div>
+
+<div class="footer">贵州电力现货套利分析系统 · 数据来源: 贵州统一结算点 & Open-Meteo · 多头上限 10.0% · 空头上限 10.0%</div>
+
+<script>
+const D = {
+  "target_date": "2026-09-11",
+  "target_weekday": "周五",
+  "target_calendar": {
+    "weekday": "周五",
+    "weekday_num": 4,
+    "day_type": "weekday",
+    "day_type_cn": "工作日",
+    "month": 9,
+    "season": "秋",
+    "cust_count": 3
+  },
+  "hours": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ],
+  "hour_labels": [
+    "00:00",
+    "01:00",
+    "02:00",
+    "03:00",
+    "04:00",
+    "05:00",
+    "06:00",
+    "07:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
+    "19:00",
+    "20:00",
+    "21:00",
+    "22:00",
+    "23:00"
+  ],
+  "weather_w": {
+    "temp": [
+      10.4,
+      10.3,
+      10.4,
+      10.3,
+      10.2,
+      10.2,
+      10.2,
+      10.2,
+      10.7,
+      12.2,
+      13.9,
+      15.0,
+      16.0,
+      17.0,
+      18.7,
+      19.5,
+      19.7,
+      19.5,
+      18.6,
+      16.8,
+      15.4,
+      14.8,
+      14.2,
+      13.7
+    ],
+    "hum": [
+      92.0,
+      91.0,
+      88.0,
+      87.0,
+      88.0,
+      88.0,
+      88.0,
+      87.0,
+      85.0,
+      78.0,
+      73.0,
+      70.0,
+      65.0,
+      59.0,
+      52.0,
+      48.0,
+      47.0,
+      48.0,
+      52.0,
+      61.0,
+      73.0,
+      75.0,
+      78.0,
+      83.0
+    ],
+    "cloud": [
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      99.0,
+      100.0,
+      100.0,
+      100.0,
+      99.0,
+      56.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0
+    ],
+    "precip": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.1,
+      0.2,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.1,
+      0.0,
+      0.1,
+      0.2
+    ],
+    "wind": [
+      16.7,
+      14.2,
+      11.9,
+      10.4,
+      9.2,
+      7.8,
+      7.9,
+      7.6,
+      7.1,
+      5.6,
+      3.3,
+      4.3,
+      5.4,
+      7.4,
+      8.6,
+      8.7,
+      9.1,
+      10.1,
+      12.2,
+      12.4,
+      10.5,
+      9.2,
+      9.0,
+      8.7
+    ],
+    "rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      34.0,
+      156.0,
+      357.0,
+      409.0,
+      443.0,
+      412.0,
+      604.0,
+      554.0,
+      369.0,
+      320.0,
+      147.0,
+      53.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "weather_g": {
+    "temp": [
+      18.3,
+      18.3,
+      18.2,
+      17.8,
+      17.1,
+      16.7,
+      16.4,
+      16.3,
+      16.8,
+      17.9,
+      19.6,
+      21.6,
+      23.4,
+      25.3,
+      25.5,
+      25.4,
+      24.8,
+      24.9,
+      24.4,
+      22.4,
+      20.6,
+      19.5,
+      18.9,
+      18.2
+    ],
+    "hum": [
+      74.0,
+      74.0,
+      74.0,
+      75.0,
+      77.0,
+      76.0,
+      74.0,
+      72.0,
+      68.0,
+      63.0,
+      58.0,
+      53.0,
+      49.0,
+      45.0,
+      44.0,
+      45.0,
+      46.0,
+      45.0,
+      46.0,
+      52.0,
+      59.0,
+      64.0,
+      66.0,
+      70.0
+    ],
+    "cloud": [
+      100.0,
+      100.0,
+      100.0,
+      86.0,
+      99.0,
+      100.0,
+      100.0,
+      100.0,
+      97.0,
+      100.0,
+      49.0,
+      48.0,
+      60.0,
+      72.0,
+      44.0,
+      23.0,
+      20.0,
+      45.0,
+      33.0,
+      7.0,
+      9.0,
+      18.0,
+      15.0,
+      8.0
+    ],
+    "precip": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "wind": [
+      10.0,
+      9.0,
+      7.8,
+      8.8,
+      11.1,
+      12.1,
+      12.0,
+      11.4,
+      11.2,
+      11.3,
+      12.3,
+      12.4,
+      12.3,
+      11.4,
+      12.9,
+      12.6,
+      11.4,
+      9.5,
+      10.5,
+      13.5,
+      10.7,
+      6.5,
+      5.9,
+      5.1
+    ],
+    "rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.0,
+      58.0,
+      192.0,
+      383.0,
+      616.0,
+      788.0,
+      806.0,
+      670.0,
+      573.0,
+      395.0,
+      340.0,
+      216.0,
+      64.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "similar_days": [
+    {
+      "date": "2026-08-07",
+      "weekday": "周五",
+      "weekday_num": 4,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 8,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.643,
+      "w_dist": 1.016,
+      "c_pen": 0.033,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.0,
+        "month": 0.013,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#e63946",
+      "weather_w": [
+        [
+          14.0,
+          14.2,
+          14.2,
+          13.7,
+          13.6,
+          13.6,
+          13.5,
+          13.6,
+          14.2,
+          15.4,
+          15.7,
+          16.3,
+          17.3,
+          19.0,
+          18.3,
+          17.4,
+          18.1,
+          18.4,
+          17.9,
+          17.3,
+          16.5,
+          15.4,
+          15.2,
+          15.0
+        ],
+        [
+          99.0,
+          99.0,
+          99.0,
+          99.0,
+          99.0,
+          99.0,
+          99.0,
+          98.0,
+          97.0,
+          89.0,
+          88.0,
+          84.0,
+          79.0,
+          69.0,
+          71.0,
+          74.0,
+          72.0,
+          69.0,
+          72.0,
+          76.0,
+          82.0,
+          90.0,
+          94.0,
+          95.0
+        ],
+        [
+          74.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          96.0,
+          100.0,
+          100.0,
+          100.0,
+          90.0,
+          91.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          96.0,
+          80.0,
+          95.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.4,
+          0.4,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.2,
+          0.3,
+          0.2
+        ],
+        [
+          8.0,
+          6.7,
+          10.3,
+          9.4,
+          9.8,
+          9.0,
+          8.8,
+          8.5,
+          8.0,
+          11.9,
+          13.9,
+          14.1,
+          13.9,
+          12.7,
+          13.9,
+          13.1,
+          10.3,
+          8.4,
+          8.0,
+          9.0,
+          11.1,
+          9.7,
+          9.6,
+          9.4
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          4.0,
+          63.0,
+          236.0,
+          279.0,
+          371.0,
+          479.0,
+          814.0,
+          763.0,
+          344.0,
+          420.0,
+          299.0,
+          123.0,
+          108.0,
+          24.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          21.7,
+          21.3,
+          21.2,
+          20.8,
+          20.4,
+          20.3,
+          20.3,
+          20.5,
+          21.0,
+          22.1,
+          23.7,
+          24.6,
+          25.5,
+          26.1,
+          26.5,
+          26.2,
+          24.3,
+          23.3,
+          24.0,
+          23.3,
+          23.7,
+          22.6,
+          22.5,
+          22.3
+        ],
+        [
+          96.0,
+          97.0,
+          99.0,
+          98.0,
+          99.0,
+          99.0,
+          98.0,
+          98.0,
+          96.0,
+          92.0,
+          82.0,
+          77.0,
+          73.0,
+          70.0,
+          66.0,
+          69.0,
+          82.0,
+          90.0,
+          81.0,
+          86.0,
+          82.0,
+          87.0,
+          89.0,
+          91.0
+        ],
+        [
+          100.0,
+          92.0,
+          99.0,
+          97.0,
+          99.0,
+          100.0,
+          100.0,
+          98.0,
+          91.0,
+          97.0,
+          98.0,
+          96.0,
+          100.0,
+          100.0,
+          71.0,
+          64.0,
+          91.0,
+          38.0,
+          55.0,
+          43.0,
+          94.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        [
+          1.0,
+          0.1,
+          0.2,
+          0.4,
+          0.2,
+          0.1,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.2,
+          1.3,
+          1.4,
+          0.3,
+          0.1,
+          0.1,
+          0.2,
+          0.2,
+          0.1
+        ],
+        [
+          3.0,
+          3.0,
+          5.6,
+          4.4,
+          4.7,
+          6.5,
+          5.0,
+          6.1,
+          7.0,
+          6.0,
+          7.1,
+          6.7,
+          5.7,
+          6.2,
+          7.0,
+          7.5,
+          12.0,
+          9.2,
+          10.4,
+          7.9,
+          7.1,
+          5.8,
+          6.5,
+          6.1
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          6.0,
+          81.0,
+          217.0,
+          370.0,
+          424.0,
+          506.0,
+          516.0,
+          535.0,
+          699.0,
+          634.0,
+          389.0,
+          263.0,
+          128.0,
+          13.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -10.5,
+        23.55,
+        311.69,
+        322.24,
+        396.09,
+        331.7,
+        182.87,
+        53.58,
+        11.02,
+        -26.62,
+        -13.51,
+        -36.04,
+        -22.51,
+        46.91,
+        123.34,
+        209.83,
+        127.49,
+        61.28,
+        -12.11,
+        0.43,
+        -6.38,
+        -2.06,
+        -41.25,
+        -25.26
+      ],
+      "rt": [
+        452.11,
+        451.18,
+        726.69,
+        728.77,
+        799.5,
+        737.65,
+        591.72,
+        468.0,
+        413.26,
+        396.25,
+        366.97,
+        346.2,
+        321.79,
+        407.69,
+        485.23,
+        581.21,
+        533.88,
+        467.57,
+        442.37,
+        494.33,
+        444.75,
+        432.09,
+        425.74,
+        409.85
+      ],
+      "da": [
+        462.61,
+        427.63,
+        415.0,
+        406.53,
+        403.41,
+        405.95,
+        408.85,
+        414.42,
+        402.24,
+        422.87,
+        380.48,
+        382.24,
+        344.3,
+        360.78,
+        361.89,
+        371.38,
+        406.39,
+        406.29,
+        454.48,
+        493.9,
+        451.13,
+        434.15,
+        466.99,
+        435.11
+      ],
+      "load": [
+        0.9434,
+        0.7034,
+        0.6634,
+        0.6234,
+        0.5834,
+        0.5434,
+        0.5434,
+        0.5834,
+        0.7434,
+        1.1434,
+        1.2234,
+        1.4234,
+        1.5034,
+        1.5034,
+        1.6634,
+        1.6234,
+        1.6234,
+        1.5434,
+        1.5434,
+        1.5834,
+        1.6234,
+        1.5034,
+        1.3834,
+        0.9834
+      ]
+    },
+    {
+      "date": "2026-07-31",
+      "weekday": "周五",
+      "weekday_num": 4,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 7,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.647,
+      "w_dist": 1.0,
+      "c_pen": 0.047,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.0,
+        "month": 0.027,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#2a9d8f",
+      "weather_w": [
+        [
+          15.9,
+          15.7,
+          15.9,
+          15.5,
+          15.1,
+          15.2,
+          15.0,
+          15.1,
+          16.2,
+          16.9,
+          18.1,
+          20.0,
+          21.2,
+          21.9,
+          22.6,
+          21.7,
+          20.6,
+          21.5,
+          20.1,
+          19.2,
+          18.3,
+          16.3,
+          16.0,
+          16.1
+        ],
+        [
+          96.0,
+          95.0,
+          96.0,
+          97.0,
+          98.0,
+          97.0,
+          97.0,
+          96.0,
+          94.0,
+          88.0,
+          81.0,
+          72.0,
+          67.0,
+          64.0,
+          64.0,
+          67.0,
+          75.0,
+          72.0,
+          75.0,
+          79.0,
+          85.0,
+          96.0,
+          97.0,
+          98.0
+        ],
+        [
+          95.0,
+          98.0,
+          95.0,
+          98.0,
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          88.0,
+          86.0,
+          95.0,
+          100.0,
+          99.0,
+          99.0,
+          100.0,
+          98.0,
+          97.0,
+          99.0,
+          99.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.1,
+          0.7,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.2,
+          0.3,
+          0.3
+        ],
+        [
+          23.1,
+          22.9,
+          22.2,
+          22.2,
+          22.2,
+          22.4,
+          22.3,
+          23.1,
+          21.8,
+          22.8,
+          23.5,
+          23.9,
+          21.7,
+          21.4,
+          19.6,
+          22.3,
+          16.8,
+          12.5,
+          16.3,
+          16.7,
+          15.7,
+          20.7,
+          17.1,
+          18.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          6.0,
+          80.0,
+          204.0,
+          305.0,
+          564.0,
+          652.0,
+          709.0,
+          766.0,
+          827.0,
+          679.0,
+          429.0,
+          270.0,
+          132.0,
+          22.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          22.4,
+          22.2,
+          22.0,
+          21.5,
+          21.3,
+          21.2,
+          21.3,
+          21.4,
+          22.8,
+          23.7,
+          25.0,
+          26.9,
+          28.3,
+          28.9,
+          30.2,
+          30.1,
+          29.8,
+          28.6,
+          26.9,
+          26.0,
+          25.1,
+          24.2,
+          23.5,
+          23.1
+        ],
+        [
+          84.0,
+          84.0,
+          84.0,
+          87.0,
+          87.0,
+          87.0,
+          86.0,
+          86.0,
+          82.0,
+          76.0,
+          69.0,
+          60.0,
+          55.0,
+          54.0,
+          51.0,
+          52.0,
+          52.0,
+          56.0,
+          64.0,
+          69.0,
+          73.0,
+          77.0,
+          80.0,
+          80.0
+        ],
+        [
+          79.0,
+          67.0,
+          32.0,
+          45.0,
+          45.0,
+          55.0,
+          94.0,
+          98.0,
+          74.0,
+          94.0,
+          70.0,
+          68.0,
+          64.0,
+          38.0,
+          86.0,
+          28.0,
+          51.0,
+          48.0,
+          54.0,
+          47.0,
+          85.0,
+          61.0,
+          59.0,
+          92.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.2,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          16.2,
+          16.8,
+          17.7,
+          15.8,
+          15.8,
+          16.2,
+          16.5,
+          16.1,
+          18.1,
+          20.5,
+          21.5,
+          21.9,
+          21.1,
+          17.9,
+          17.4,
+          18.1,
+          18.0,
+          20.5,
+          19.7,
+          17.8,
+          16.2,
+          15.4,
+          15.0,
+          16.8
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          11.0,
+          101.0,
+          271.0,
+          379.0,
+          528.0,
+          603.0,
+          673.0,
+          898.0,
+          800.0,
+          722.0,
+          497.0,
+          315.0,
+          150.0,
+          18.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -0.75,
+        -20.63,
+        -2.31,
+        -4.67,
+        -3.87,
+        -4.86,
+        -2.21,
+        -0.59,
+        2.02,
+        -17.26,
+        -0.44,
+        28.04,
+        4.72,
+        41.24,
+        10.02,
+        8.95,
+        35.34,
+        135.37,
+        171.26,
+        50.04,
+        16.42,
+        11.96,
+        4.66,
+        0.34
+      ],
+      "rt": [
+        381.12,
+        360.28,
+        376.35,
+        369.8,
+        370.78,
+        369.77,
+        374.75,
+        378.15,
+        375.45,
+        343.55,
+        313.86,
+        280.99,
+        218.13,
+        278.28,
+        218.43,
+        248.93,
+        358.57,
+        513.73,
+        570.45,
+        439.59,
+        406.69,
+        398.94,
+        395.43,
+        383.82
+      ],
+      "da": [
+        381.87,
+        380.91,
+        378.66,
+        374.47,
+        374.65,
+        374.63,
+        376.96,
+        378.74,
+        373.43,
+        360.81,
+        314.3,
+        252.95,
+        213.41,
+        237.04,
+        208.41,
+        239.98,
+        323.23,
+        378.36,
+        399.19,
+        389.55,
+        390.27,
+        386.98,
+        390.77,
+        383.48
+      ],
+      "load": [
+        0.823,
+        0.703,
+        0.543,
+        0.543,
+        0.543,
+        0.503,
+        0.463,
+        0.503,
+        0.743,
+        1.063,
+        1.183,
+        1.383,
+        1.383,
+        1.383,
+        1.503,
+        1.703,
+        1.743,
+        1.743,
+        1.503,
+        1.543,
+        1.623,
+        1.583,
+        1.343,
+        1.063
+      ]
+    },
+    {
+      "date": "2026-08-20",
+      "weekday": "周四",
+      "weekday_num": 3,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 8,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.656,
+      "w_dist": 1.016,
+      "c_pen": 0.047,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.013,
+        "month": 0.013,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#f4a261",
+      "weather_w": [
+        [
+          15.2,
+          15.1,
+          15.0,
+          14.6,
+          14.5,
+          14.3,
+          14.4,
+          14.4,
+          15.9,
+          16.3,
+          18.0,
+          19.7,
+          21.3,
+          22.5,
+          21.6,
+          21.4,
+          18.7,
+          18.5,
+          18.7,
+          17.2,
+          17.1,
+          16.3,
+          15.8,
+          15.7
+        ],
+        [
+          95.0,
+          95.0,
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          99.0,
+          92.0,
+          89.0,
+          81.0,
+          73.0,
+          71.0,
+          68.0,
+          69.0,
+          71.0,
+          88.0,
+          84.0,
+          85.0,
+          94.0,
+          95.0,
+          96.0,
+          98.0,
+          99.0
+        ],
+        [
+          100.0,
+          100.0,
+          47.0,
+          73.0,
+          94.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          91.0,
+          99.0,
+          95.0,
+          95.0,
+          100.0,
+          100.0,
+          100.0,
+          88.0,
+          95.0,
+          91.0,
+          93.0,
+          93.0,
+          96.0,
+          89.0,
+          100.0
+        ],
+        [
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.3,
+          0.1,
+          0.0,
+          0.1,
+          0.6,
+          3.3,
+          0.7,
+          0.5,
+          1.6,
+          0.2,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          7.0,
+          6.9,
+          8.6,
+          6.1,
+          7.2,
+          7.5,
+          7.6,
+          6.5,
+          8.9,
+          10.1,
+          8.0,
+          6.5,
+          6.1,
+          6.1,
+          7.2,
+          7.3,
+          6.5,
+          8.9,
+          9.1,
+          9.6,
+          6.4,
+          9.7,
+          7.9,
+          6.1
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.0,
+          50.0,
+          95.0,
+          365.0,
+          584.0,
+          770.0,
+          932.0,
+          836.0,
+          626.0,
+          617.0,
+          370.0,
+          267.0,
+          135.0,
+          11.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          21.8,
+          21.7,
+          21.7,
+          21.6,
+          21.3,
+          21.2,
+          21.2,
+          21.4,
+          23.0,
+          24.3,
+          25.8,
+          27.3,
+          28.6,
+          29.9,
+          30.3,
+          30.1,
+          30.2,
+          29.3,
+          27.5,
+          26.3,
+          25.1,
+          24.0,
+          23.2,
+          22.6
+        ],
+        [
+          93.0,
+          93.0,
+          97.0,
+          98.0,
+          98.0,
+          98.0,
+          97.0,
+          96.0,
+          89.0,
+          80.0,
+          71.0,
+          63.0,
+          57.0,
+          52.0,
+          49.0,
+          49.0,
+          48.0,
+          51.0,
+          60.0,
+          66.0,
+          72.0,
+          78.0,
+          84.0,
+          88.0
+        ],
+        [
+          82.0,
+          96.0,
+          95.0,
+          66.0,
+          96.0,
+          70.0,
+          41.0,
+          58.0,
+          70.0,
+          93.0,
+          95.0,
+          34.0,
+          27.0,
+          27.0,
+          38.0,
+          26.0,
+          34.0,
+          30.0,
+          54.0,
+          59.0,
+          35.0,
+          23.0,
+          18.0,
+          20.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.1,
+          0.3,
+          0.2,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          7.3,
+          9.0,
+          9.7,
+          10.2,
+          9.4,
+          9.5,
+          9.1,
+          9.3,
+          11.5,
+          12.8,
+          13.4,
+          13.5,
+          13.7,
+          14.2,
+          14.1,
+          15.2,
+          16.0,
+          17.7,
+          18.1,
+          11.8,
+          11.0,
+          9.4,
+          7.4,
+          6.2
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8.0,
+          109.0,
+          305.0,
+          471.0,
+          630.0,
+          742.0,
+          884.0,
+          908.0,
+          804.0,
+          687.0,
+          460.0,
+          298.0,
+          122.0,
+          6.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -32.04,
+        75.5,
+        411.32,
+        252.8,
+        315.94,
+        86.1,
+        167.52,
+        4.57,
+        89.56,
+        153.11,
+        65.97,
+        107.41,
+        128.39,
+        59.95,
+        179.38,
+        138.9,
+        70.02,
+        3.04,
+        -58.12,
+        -86.57,
+        -46.58,
+        -61.61,
+        -74.27,
+        -40.72
+      ],
+      "rt": [
+        534.45,
+        621.24,
+        954.78,
+        793.69,
+        835.83,
+        605.1,
+        707.63,
+        529.87,
+        567.44,
+        569.18,
+        468.44,
+        517.26,
+        531.97,
+        487.59,
+        586.46,
+        545.66,
+        556.69,
+        507.24,
+        497.77,
+        518.62,
+        523.87,
+        508.88,
+        512.66,
+        524.86
+      ],
+      "da": [
+        566.49,
+        545.74,
+        543.46,
+        540.89,
+        519.89,
+        519.0,
+        540.11,
+        525.3,
+        477.88,
+        416.07,
+        402.47,
+        409.85,
+        403.58,
+        427.64,
+        407.08,
+        406.76,
+        486.67,
+        504.2,
+        555.89,
+        605.19,
+        570.45,
+        570.49,
+        586.93,
+        565.58
+      ],
+      "load": [
+        0.8235,
+        0.7035,
+        0.6235,
+        0.5835,
+        0.5435,
+        0.5435,
+        0.4235,
+        0.5035,
+        0.7435,
+        1.0235,
+        1.3035,
+        1.3835,
+        1.4235,
+        1.5035,
+        1.6235,
+        1.7435,
+        1.7435,
+        1.7835,
+        1.6235,
+        1.6635,
+        1.7035,
+        1.5035,
+        1.1835,
+        0.9835
+      ]
+    },
+    {
+      "date": "2026-07-29",
+      "weekday": "周三",
+      "weekday_num": 2,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 7,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.666,
+      "w_dist": 0.988,
+      "c_pen": 0.073,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.027,
+        "month": 0.027,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#8ecae6",
+      "weather_w": [
+        [
+          15.4,
+          15.1,
+          14.9,
+          14.5,
+          14.5,
+          14.5,
+          14.4,
+          14.5,
+          15.8,
+          16.6,
+          17.5,
+          18.6,
+          20.1,
+          20.8,
+          18.2,
+          19.2,
+          19.1,
+          18.1,
+          18.1,
+          17.6,
+          16.3,
+          16.0,
+          16.2,
+          16.1
+        ],
+        [
+          96.0,
+          97.0,
+          98.0,
+          99.0,
+          98.0,
+          98.0,
+          98.0,
+          97.0,
+          94.0,
+          92.0,
+          86.0,
+          81.0,
+          77.0,
+          72.0,
+          86.0,
+          76.0,
+          79.0,
+          86.0,
+          89.0,
+          88.0,
+          95.0,
+          96.0,
+          97.0,
+          96.0
+        ],
+        [
+          100.0,
+          99.0,
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          100.0,
+          100.0,
+          98.0,
+          98.0,
+          95.0,
+          98.0,
+          94.0,
+          91.0,
+          94.0,
+          96.0,
+          98.0,
+          97.0,
+          97.0,
+          96.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.2,
+          0.2,
+          0.2,
+          0.2,
+          0.2,
+          2.0,
+          0.7,
+          0.4,
+          0.9,
+          0.3,
+          0.0,
+          0.1,
+          0.0,
+          0.2,
+          0.0
+        ],
+        [
+          14.2,
+          15.8,
+          14.8,
+          15.9,
+          15.2,
+          16.0,
+          16.1,
+          15.3,
+          18.2,
+          18.9,
+          19.8,
+          19.1,
+          22.6,
+          20.6,
+          16.6,
+          24.2,
+          21.6,
+          23.0,
+          18.0,
+          19.8,
+          18.1,
+          18.2,
+          19.8,
+          21.4
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7.0,
+          78.0,
+          243.0,
+          393.0,
+          507.0,
+          734.0,
+          653.0,
+          513.0,
+          773.0,
+          564.0,
+          412.0,
+          264.0,
+          142.0,
+          32.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          22.0,
+          21.7,
+          21.8,
+          21.3,
+          21.1,
+          21.0,
+          20.8,
+          21.0,
+          22.0,
+          23.4,
+          24.8,
+          26.4,
+          27.6,
+          28.8,
+          29.2,
+          29.2,
+          29.4,
+          29.3,
+          28.3,
+          26.6,
+          25.5,
+          24.3,
+          23.3,
+          22.5
+        ],
+        [
+          90.0,
+          90.0,
+          90.0,
+          91.0,
+          90.0,
+          90.0,
+          91.0,
+          91.0,
+          85.0,
+          78.0,
+          69.0,
+          62.0,
+          57.0,
+          53.0,
+          50.0,
+          49.0,
+          47.0,
+          47.0,
+          51.0,
+          59.0,
+          63.0,
+          67.0,
+          70.0,
+          73.0
+        ],
+        [
+          97.0,
+          83.0,
+          98.0,
+          93.0,
+          87.0,
+          73.0,
+          95.0,
+          99.0,
+          96.0,
+          99.0,
+          100.0,
+          98.0,
+          99.0,
+          89.0,
+          91.0,
+          89.0,
+          100.0,
+          100.0,
+          83.0,
+          99.0,
+          30.0,
+          87.0,
+          65.0,
+          67.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.0,
+          0.1,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          6.7,
+          6.9,
+          6.3,
+          5.6,
+          8.3,
+          10.7,
+          9.9,
+          9.4,
+          14.8,
+          15.2,
+          17.2,
+          16.5,
+          17.3,
+          18.7,
+          17.2,
+          18.0,
+          15.6,
+          16.4,
+          17.1,
+          14.7,
+          11.7,
+          12.2,
+          9.9,
+          11.4
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          19.0,
+          69.0,
+          250.0,
+          407.0,
+          481.0,
+          677.0,
+          845.0,
+          876.0,
+          814.0,
+          720.0,
+          596.0,
+          378.0,
+          170.0,
+          21.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -1.25,
+        -5.11,
+        -2.11,
+        1.62,
+        -1.93,
+        -4.24,
+        -3.77,
+        -4.87,
+        -10.88,
+        -11.1,
+        -8.23,
+        -9.68,
+        32.04,
+        80.48,
+        -1.54,
+        -12.56,
+        0.56,
+        161.0,
+        141.67,
+        -0.57,
+        -28.05,
+        -1.37,
+        10.78,
+        -0.73
+      ],
+      "rt": [
+        384.3,
+        380.21,
+        380.07,
+        382.99,
+        379.08,
+        376.8,
+        380.51,
+        379.4,
+        374.12,
+        365.36,
+        364.56,
+        365.84,
+        388.08,
+        435.1,
+        323.64,
+        323.99,
+        355.06,
+        552.59,
+        526.7,
+        386.38,
+        381.96,
+        388.66,
+        401.39,
+        383.2
+      ],
+      "da": [
+        385.55,
+        385.32,
+        382.18,
+        381.37,
+        381.01,
+        381.04,
+        384.28,
+        384.27,
+        385.0,
+        376.46,
+        372.79,
+        375.52,
+        356.04,
+        354.62,
+        325.18,
+        336.55,
+        354.5,
+        391.59,
+        385.03,
+        386.95,
+        410.01,
+        390.03,
+        390.61,
+        383.93
+      ],
+      "load": [
+        0.7863,
+        0.7063,
+        0.5463,
+        0.5063,
+        0.4663,
+        0.4663,
+        0.4263,
+        0.5063,
+        0.6663,
+        1.1063,
+        1.1463,
+        1.4263,
+        1.4263,
+        1.5063,
+        1.5463,
+        1.5463,
+        1.7063,
+        1.6663,
+        1.5463,
+        1.5463,
+        1.5463,
+        1.4663,
+        1.1863,
+        0.9463
+      ]
+    },
+    {
+      "date": "2026-08-04",
+      "weekday": "周二",
+      "weekday_num": 1,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 8,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.693,
+      "w_dist": 1.033,
+      "c_pen": 0.073,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.04,
+        "month": 0.013,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#457b9d",
+      "weather_w": [
+        [
+          13.1,
+          13.3,
+          14.5,
+          14.1,
+          12.8,
+          12.2,
+          12.1,
+          12.1,
+          14.9,
+          15.6,
+          17.2,
+          18.4,
+          19.3,
+          19.8,
+          20.1,
+          20.7,
+          20.7,
+          20.5,
+          20.0,
+          18.7,
+          17.4,
+          15.7,
+          15.2,
+          15.2
+        ],
+        [
+          83.0,
+          81.0,
+          78.0,
+          82.0,
+          90.0,
+          93.0,
+          94.0,
+          95.0,
+          87.0,
+          82.0,
+          72.0,
+          65.0,
+          59.0,
+          60.0,
+          58.0,
+          56.0,
+          57.0,
+          56.0,
+          59.0,
+          65.0,
+          68.0,
+          74.0,
+          76.0,
+          77.0
+        ],
+        [
+          33.0,
+          85.0,
+          100.0,
+          34.0,
+          35.0,
+          75.0,
+          58.0,
+          89.0,
+          98.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          56.0,
+          96.0,
+          93.0,
+          62.0,
+          80.0,
+          88.0,
+          100.0,
+          91.0,
+          99.0,
+          99.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          9.1,
+          10.9,
+          18.0,
+          15.5,
+          11.0,
+          9.2,
+          8.9,
+          10.3,
+          18.1,
+          20.7,
+          20.2,
+          20.7,
+          21.1,
+          22.0,
+          21.6,
+          20.5,
+          17.9,
+          17.5,
+          18.2,
+          13.8,
+          15.1,
+          13.5,
+          13.9,
+          13.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          11.0,
+          139.0,
+          237.0,
+          403.0,
+          497.0,
+          526.0,
+          567.0,
+          527.0,
+          945.0,
+          729.0,
+          559.0,
+          433.0,
+          198.0,
+          29.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          21.1,
+          21.7,
+          21.7,
+          20.9,
+          20.4,
+          19.5,
+          19.4,
+          20.1,
+          21.9,
+          23.5,
+          24.8,
+          25.6,
+          26.5,
+          27.4,
+          28.0,
+          27.9,
+          27.8,
+          27.7,
+          27.6,
+          26.1,
+          24.7,
+          24.2,
+          23.2,
+          22.4
+        ],
+        [
+          94.0,
+          91.0,
+          89.0,
+          90.0,
+          91.0,
+          92.0,
+          92.0,
+          90.0,
+          84.0,
+          76.0,
+          69.0,
+          65.0,
+          62.0,
+          59.0,
+          55.0,
+          52.0,
+          52.0,
+          52.0,
+          54.0,
+          64.0,
+          70.0,
+          73.0,
+          79.0,
+          83.0
+        ],
+        [
+          100.0,
+          100.0,
+          100.0,
+          88.0,
+          31.0,
+          30.0,
+          45.0,
+          31.0,
+          98.0,
+          100.0,
+          100.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          96.0,
+          88.0,
+          32.0,
+          67.0,
+          27.0,
+          99.0,
+          93.0,
+          98.0,
+          41.0
+        ],
+        [
+          0.1,
+          0.2,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          3.8,
+          0.9,
+          6.7,
+          6.0,
+          4.9,
+          4.4,
+          2.7,
+          2.8,
+          3.2,
+          9.5,
+          11.6,
+          9.7,
+          9.9,
+          12.8,
+          12.1,
+          14.5,
+          13.6,
+          11.9,
+          11.6,
+          6.7,
+          7.7,
+          8.2,
+          5.0,
+          4.9
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          18.0,
+          149.0,
+          303.0,
+          396.0,
+          385.0,
+          465.0,
+          613.0,
+          660.0,
+          545.0,
+          501.0,
+          405.0,
+          353.0,
+          139.0,
+          15.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        77.65,
+        9.53,
+        -3.72,
+        -4.93,
+        -5.17,
+        -3.69,
+        -3.9,
+        -3.57,
+        -2.97,
+        -5.33,
+        -18.2,
+        -103.59,
+        -172.58,
+        -166.01,
+        -195.94,
+        -78.47,
+        18.4,
+        5.28,
+        20.42,
+        131.63,
+        166.58,
+        34.32,
+        23.05,
+        7.97
+      ],
+      "rt": [
+        485.19,
+        412.22,
+        393.28,
+        390.57,
+        387.57,
+        388.75,
+        391.06,
+        390.74,
+        387.67,
+        380.17,
+        355.21,
+        251.37,
+        174.19,
+        188.85,
+        135.05,
+        261.78,
+        386.39,
+        395.19,
+        423.78,
+        544.44,
+        580.57,
+        445.82,
+        428.08,
+        409.48
+      ],
+      "da": [
+        407.54,
+        402.69,
+        397.0,
+        395.5,
+        392.74,
+        392.44,
+        394.96,
+        394.31,
+        390.64,
+        385.5,
+        373.41,
+        354.96,
+        346.77,
+        354.86,
+        330.99,
+        340.25,
+        367.99,
+        389.91,
+        403.36,
+        412.81,
+        413.99,
+        411.5,
+        405.03,
+        401.51
+      ],
+      "load": [
+        0.7794,
+        0.7794,
+        0.4994,
+        0.6194,
+        0.4594,
+        0.4994,
+        0.5394,
+        0.5394,
+        0.6994,
+        1.1794,
+        1.2994,
+        1.5394,
+        1.4994,
+        1.4194,
+        1.6594,
+        1.6594,
+        1.6994,
+        1.6594,
+        1.4994,
+        1.4594,
+        1.5394,
+        1.5394,
+        1.1794,
+        0.9794
+      ]
+    },
+    {
+      "date": "2026-08-21",
+      "weekday": "周五",
+      "weekday_num": 4,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 8,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.694,
+      "w_dist": 1.1,
+      "c_pen": 0.033,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.0,
+        "month": 0.013,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#e63946",
+      "weather_w": [
+        [
+          16.1,
+          16.2,
+          15.7,
+          15.2,
+          15.2,
+          15.0,
+          14.8,
+          15.1,
+          16.0,
+          17.0,
+          18.6,
+          20.3,
+          21.8,
+          23.0,
+          22.7,
+          22.0,
+          23.0,
+          21.8,
+          18.4,
+          17.9,
+          18.1,
+          17.1,
+          16.4,
+          16.3
+        ],
+        [
+          97.0,
+          96.0,
+          98.0,
+          99.0,
+          99.0,
+          99.0,
+          99.0,
+          96.0,
+          95.0,
+          89.0,
+          79.0,
+          71.0,
+          69.0,
+          67.0,
+          67.0,
+          70.0,
+          65.0,
+          73.0,
+          85.0,
+          92.0,
+          91.0,
+          94.0,
+          97.0,
+          97.0
+        ],
+        [
+          98.0,
+          67.0,
+          48.0,
+          43.0,
+          58.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          73.0,
+          41.0,
+          42.0,
+          25.0,
+          100.0,
+          100.0,
+          34.0,
+          100.0,
+          100.0,
+          100.0,
+          91.0,
+          32.0,
+          31.0,
+          36.0,
+          45.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.2,
+          0.3,
+          0.3,
+          0.0,
+          0.0,
+          0.3,
+          0.2,
+          2.0,
+          0.9,
+          0.5,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          5.0,
+          2.4,
+          0.4,
+          1.9,
+          3.0,
+          2.7,
+          2.6,
+          3.3,
+          1.8,
+          1.3,
+          3.2,
+          5.6,
+          6.0,
+          7.4,
+          7.1,
+          6.5,
+          5.3,
+          5.8,
+          10.8,
+          3.2,
+          7.7,
+          4.7,
+          3.5,
+          1.1
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.0,
+          61.0,
+          232.0,
+          494.0,
+          682.0,
+          806.0,
+          958.0,
+          875.0,
+          737.0,
+          689.0,
+          403.0,
+          118.0,
+          66.0,
+          12.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          22.1,
+          21.7,
+          22.0,
+          21.3,
+          20.9,
+          21.0,
+          21.0,
+          21.5,
+          23.1,
+          24.7,
+          26.3,
+          27.8,
+          29.1,
+          30.2,
+          30.4,
+          30.7,
+          31.1,
+          31.1,
+          30.5,
+          27.8,
+          26.1,
+          24.6,
+          23.5,
+          22.7
+        ],
+        [
+          91.0,
+          92.0,
+          92.0,
+          95.0,
+          95.0,
+          95.0,
+          95.0,
+          92.0,
+          84.0,
+          76.0,
+          67.0,
+          59.0,
+          53.0,
+          49.0,
+          47.0,
+          46.0,
+          44.0,
+          44.0,
+          45.0,
+          58.0,
+          62.0,
+          69.0,
+          76.0,
+          80.0
+        ],
+        [
+          17.0,
+          14.0,
+          8.0,
+          3.0,
+          7.0,
+          28.0,
+          98.0,
+          100.0,
+          29.0,
+          9.0,
+          10.0,
+          9.0,
+          11.0,
+          11.0,
+          19.0,
+          5.0,
+          2.0,
+          6.0,
+          31.0,
+          5.0,
+          5.0,
+          3.0,
+          2.0,
+          1.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.1,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          5.6,
+          6.5,
+          9.5,
+          8.9,
+          8.5,
+          7.7,
+          8.0,
+          8.6,
+          9.9,
+          11.0,
+          10.7,
+          10.9,
+          11.2,
+          11.2,
+          10.3,
+          8.9,
+          9.6,
+          10.2,
+          11.1,
+          9.1,
+          7.0,
+          6.3,
+          5.1,
+          5.4
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7.0,
+          78.0,
+          297.0,
+          524.0,
+          714.0,
+          836.0,
+          908.0,
+          931.0,
+          859.0,
+          736.0,
+          557.0,
+          336.0,
+          126.0,
+          6.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -39.32,
+        -131.58,
+        -135.58,
+        -131.01,
+        -138.8,
+        -138.39,
+        -108.86,
+        -7.09,
+        375.69,
+        335.73,
+        131.1,
+        77.34,
+        10.0,
+        -77.68,
+        -48.06,
+        -20.61,
+        254.56,
+        131.22,
+        86.48,
+        408.96,
+        206.19,
+        -18.69,
+        -17.74,
+        -38.98
+      ],
+      "rt": [
+        532.45,
+        435.47,
+        424.51,
+        420.89,
+        408.32,
+        409.35,
+        433.68,
+        528.68,
+        909.68,
+        851.24,
+        635.4,
+        543.66,
+        425.66,
+        390.3,
+        342.39,
+        369.55,
+        737.61,
+        644.73,
+        640.49,
+        971.03,
+        768.44,
+        546.99,
+        553.68,
+        529.94
+      ],
+      "da": [
+        571.77,
+        567.05,
+        560.09,
+        551.9,
+        547.12,
+        547.74,
+        542.54,
+        535.77,
+        533.99,
+        515.51,
+        504.3,
+        466.32,
+        415.66,
+        467.98,
+        390.45,
+        390.16,
+        483.05,
+        513.51,
+        554.01,
+        562.07,
+        562.25,
+        565.68,
+        571.42,
+        568.92
+      ],
+      "load": [
+        0.8221,
+        0.7021,
+        0.5021,
+        0.6221,
+        0.4221,
+        0.5421,
+        0.4621,
+        0.5021,
+        0.6621,
+        1.0221,
+        1.1821,
+        1.4621,
+        1.5421,
+        1.5021,
+        1.6221,
+        1.6221,
+        1.7421,
+        1.7421,
+        1.5821,
+        1.6621,
+        1.6221,
+        1.5021,
+        1.3421,
+        1.0621
+      ]
+    },
+    {
+      "date": "2026-06-02",
+      "weekday": "周二",
+      "weekday_num": 1,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 6,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.694,
+      "w_dist": 0.99,
+      "c_pen": 0.1,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.04,
+        "month": 0.04,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#2a9d8f",
+      "weather_w": [
+        [
+          13.9,
+          13.8,
+          13.7,
+          13.6,
+          13.8,
+          14.1,
+          14.1,
+          14.4,
+          15.2,
+          15.9,
+          17.1,
+          19.3,
+          20.9,
+          22.6,
+          22.3,
+          20.3,
+          18.9,
+          18.4,
+          18.0,
+          18.0,
+          16.8,
+          16.8,
+          16.5,
+          16.5
+        ],
+        [
+          92.0,
+          94.0,
+          91.0,
+          92.0,
+          92.0,
+          93.0,
+          95.0,
+          95.0,
+          97.0,
+          93.0,
+          88.0,
+          79.0,
+          73.0,
+          67.0,
+          66.0,
+          73.0,
+          86.0,
+          93.0,
+          91.0,
+          91.0,
+          99.0,
+          98.0,
+          98.0,
+          96.0
+        ],
+        [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          95.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          99.0,
+          100.0,
+          100.0,
+          99.0,
+          99.0,
+          98.0,
+          99.0,
+          95.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        [
+          0.0,
+          0.2,
+          0.2,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.3,
+          0.1,
+          0.1,
+          0.2,
+          1.1,
+          0.8,
+          0.3,
+          0.3,
+          0.4,
+          0.1,
+          0.3,
+          0.2
+        ],
+        [
+          8.4,
+          4.7,
+          2.8,
+          1.0,
+          2.0,
+          4.8,
+          7.1,
+          10.4,
+          10.6,
+          10.6,
+          11.1,
+          11.2,
+          10.6,
+          9.0,
+          6.0,
+          5.7,
+          7.8,
+          5.5,
+          6.0,
+          5.6,
+          7.0,
+          5.9,
+          5.0,
+          5.4
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          19.0,
+          74.0,
+          176.0,
+          244.0,
+          409.0,
+          778.0,
+          873.0,
+          556.0,
+          428.0,
+          374.0,
+          242.0,
+          255.0,
+          108.0,
+          27.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          20.5,
+          20.3,
+          20.2,
+          19.8,
+          19.0,
+          18.7,
+          18.3,
+          19.3,
+          19.8,
+          20.6,
+          22.2,
+          25.1,
+          26.8,
+          27.3,
+          26.7,
+          27.5,
+          27.4,
+          27.8,
+          27.9,
+          26.6,
+          24.1,
+          22.9,
+          22.1,
+          21.5
+        ],
+        [
+          79.0,
+          79.0,
+          81.0,
+          81.0,
+          85.0,
+          85.0,
+          88.0,
+          86.0,
+          88.0,
+          84.0,
+          76.0,
+          68.0,
+          63.0,
+          62.0,
+          63.0,
+          61.0,
+          61.0,
+          61.0,
+          61.0,
+          71.0,
+          76.0,
+          80.0,
+          84.0,
+          89.0
+        ],
+        [
+          100.0,
+          89.0,
+          100.0,
+          16.0,
+          39.0,
+          22.0,
+          17.0,
+          88.0,
+          100.0,
+          98.0,
+          98.0,
+          98.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          84.0,
+          49.0,
+          62.0,
+          80.0,
+          27.0,
+          43.0,
+          88.0,
+          84.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.1,
+          0.2,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.3,
+          0.0,
+          0.0,
+          0.3
+        ],
+        [
+          5.4,
+          5.8,
+          5.2,
+          6.4,
+          1.5,
+          0.8,
+          0.7,
+          1.3,
+          1.3,
+          4.3,
+          4.3,
+          0.7,
+          6.8,
+          7.1,
+          2.7,
+          2.2,
+          1.5,
+          4.7,
+          4.3,
+          3.5,
+          9.2,
+          9.7,
+          6.4,
+          5.1
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          45.0,
+          159.0,
+          214.0,
+          377.0,
+          754.0,
+          778.0,
+          582.0,
+          538.0,
+          612.0,
+          479.0,
+          485.0,
+          341.0,
+          148.0,
+          17.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -9.49,
+        -1.66,
+        1.44,
+        5.59,
+        2.07,
+        1.2,
+        14.04,
+        -13.28,
+        9.2,
+        -13.6,
+        -2.84,
+        -44.7,
+        -159.09,
+        -64.66,
+        -201.31,
+        -95.07,
+        -20.65,
+        10.49,
+        26.68,
+        245.19,
+        17.2,
+        30.18,
+        34.63,
+        14.43
+      ],
+      "rt": [
+        394.52,
+        400.09,
+        402.73,
+        400.87,
+        390.93,
+        390.2,
+        402.13,
+        366.82,
+        388.38,
+        349.86,
+        321.92,
+        266.74,
+        171.45,
+        275.44,
+        130.17,
+        252.11,
+        344.28,
+        395.58,
+        420.64,
+        640.42,
+        414.04,
+        429.92,
+        436.88,
+        408.53
+      ],
+      "da": [
+        404.01,
+        401.75,
+        401.29,
+        395.28,
+        388.86,
+        389.0,
+        388.09,
+        380.1,
+        379.18,
+        363.46,
+        324.76,
+        311.44,
+        330.54,
+        340.1,
+        331.48,
+        347.18,
+        364.93,
+        385.09,
+        393.96,
+        395.23,
+        396.84,
+        399.74,
+        402.25,
+        394.1
+      ],
+      "load": [
+        0.4897,
+        0.5297,
+        0.4097,
+        0.4497,
+        0.3297,
+        0.4097,
+        0.3297,
+        0.4097,
+        0.6097,
+        0.8497,
+        0.9697,
+        1.1697,
+        1.1697,
+        1.1297,
+        1.1297,
+        1.3697,
+        1.2897,
+        1.4497,
+        1.2897,
+        1.3297,
+        1.2897,
+        1.2497,
+        0.9297,
+        0.6897
+      ]
+    },
+    {
+      "date": "2026-04-08",
+      "weekday": "周三",
+      "weekday_num": 2,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 4,
+      "season": "春",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.708,
+      "w_dist": 0.957,
+      "c_pen": 0.133,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.027,
+        "month": 0.067,
+        "season": 0.04,
+        "holiday_edge": 0.0
+      },
+      "color": "#f4a261",
+      "weather_w": [
+        [
+          14.9,
+          15.1,
+          15.0,
+          14.1,
+          13.3,
+          13.1,
+          12.6,
+          12.4,
+          13.9,
+          16.0,
+          18.5,
+          20.4,
+          21.8,
+          23.0,
+          21.9,
+          22.9,
+          23.0,
+          22.1,
+          21.0,
+          18.6,
+          17.5,
+          16.5,
+          14.6,
+          13.9
+        ],
+        [
+          47.0,
+          43.0,
+          45.0,
+          51.0,
+          54.0,
+          54.0,
+          55.0,
+          55.0,
+          54.0,
+          46.0,
+          32.0,
+          22.0,
+          16.0,
+          15.0,
+          17.0,
+          17.0,
+          18.0,
+          20.0,
+          24.0,
+          31.0,
+          33.0,
+          39.0,
+          46.0,
+          48.0
+        ],
+        [
+          100.0,
+          100.0,
+          93.0,
+          78.0,
+          15.0,
+          4.0,
+          41.0,
+          27.0,
+          10.0,
+          41.0,
+          47.0,
+          70.0,
+          55.0,
+          99.0,
+          64.0,
+          100.0,
+          99.0,
+          34.0,
+          57.0,
+          100.0,
+          98.0,
+          2.0,
+          21.0,
+          4.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          16.7,
+          18.1,
+          20.8,
+          20.4,
+          20.7,
+          22.0,
+          23.2,
+          25.8,
+          24.1,
+          25.2,
+          31.7,
+          37.0,
+          39.8,
+          39.8,
+          39.7,
+          36.7,
+          30.0,
+          32.5,
+          29.4,
+          25.9,
+          21.6,
+          19.2,
+          22.0,
+          24.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          103.0,
+          338.0,
+          565.0,
+          764.0,
+          880.0,
+          1003.0,
+          908.0,
+          894.0,
+          611.0,
+          396.0,
+          344.0,
+          126.0,
+          5.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          17.6,
+          18.0,
+          18.9,
+          19.1,
+          19.5,
+          19.7,
+          20.1,
+          20.2,
+          19.6,
+          20.3,
+          23.3,
+          25.1,
+          27.0,
+          29.3,
+          29.7,
+          29.8,
+          29.9,
+          29.7,
+          26.5,
+          26.8,
+          25.0,
+          24.1,
+          23.5,
+          23.2
+        ],
+        [
+          90.0,
+          90.0,
+          90.0,
+          91.0,
+          91.0,
+          93.0,
+          92.0,
+          93.0,
+          96.0,
+          91.0,
+          73.0,
+          64.0,
+          60.0,
+          44.0,
+          35.0,
+          37.0,
+          34.0,
+          31.0,
+          48.0,
+          44.0,
+          52.0,
+          58.0,
+          61.0,
+          61.0
+        ],
+        [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          85.0,
+          83.0,
+          38.0,
+          69.0,
+          3.0,
+          18.0,
+          65.0,
+          86.0,
+          98.0,
+          75.0,
+          34.0,
+          3.0,
+          5.0,
+          9.0,
+          3.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          5.3,
+          7.6,
+          14.6,
+          15.1,
+          20.0,
+          24.3,
+          23.6,
+          22.5,
+          21.3,
+          26.4,
+          28.4,
+          29.9,
+          32.6,
+          34.7,
+          36.4,
+          37.0,
+          35.4,
+          29.8,
+          33.7,
+          34.9,
+          25.8,
+          29.8,
+          30.2,
+          28.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.0,
+          41.0,
+          95.0,
+          430.0,
+          676.0,
+          850.0,
+          925.0,
+          921.0,
+          831.0,
+          681.0,
+          458.0,
+          231.0,
+          76.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -140.345,
+        -11.215,
+        -175.065,
+        -206.026,
+        -112.429,
+        -75.227,
+        -66.645,
+        -10.426,
+        -80.321,
+        -62.261,
+        -180.793,
+        -218.896,
+        -179.364,
+        -207.523,
+        -83.118,
+        -217.615,
+        -150.905,
+        -64.534,
+        -100.413,
+        -58.411,
+        -49.636,
+        -173.111,
+        -14.512,
+        -1.105
+      ],
+      "rt": [
+        401.371,
+        433.138,
+        246.518,
+        197.135,
+        271.127,
+        288.187,
+        334.367,
+        371.421,
+        360.107,
+        177.293,
+        38.166,
+        1.333,
+        -2.976,
+        10.897,
+        9.696,
+        0.9,
+        83.664,
+        326.748,
+        385.319,
+        397.402,
+        394.984,
+        340.193,
+        403.416,
+        371.847
+      ],
+      "da": [
+        541.716,
+        444.353,
+        421.583,
+        403.161,
+        383.556,
+        363.414,
+        401.012,
+        381.847,
+        440.428,
+        239.554,
+        218.959,
+        220.229,
+        176.388,
+        218.42,
+        92.814,
+        218.515,
+        234.569,
+        391.282,
+        485.732,
+        455.813,
+        444.62,
+        513.304,
+        417.928,
+        372.952
+      ],
+      "load": [
+        0.5679,
+        0.4079,
+        0.4879,
+        0.4079,
+        0.3279,
+        0.4079,
+        0.3679,
+        0.3279,
+        0.6479,
+        0.8479,
+        0.9279,
+        1.1279,
+        1.0879,
+        1.0479,
+        1.1279,
+        1.0079,
+        1.0879,
+        1.0879,
+        1.1279,
+        1.2479,
+        1.0879,
+        1.0879,
+        0.8479,
+        0.5679
+      ]
+    },
+    {
+      "date": "2026-07-30",
+      "weekday": "周四",
+      "weekday_num": 3,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 7,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.709,
+      "w_dist": 1.081,
+      "c_pen": 0.06,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.013,
+        "month": 0.027,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#8ecae6",
+      "weather_w": [
+        [
+          15.8,
+          15.5,
+          15.4,
+          15.2,
+          15.1,
+          15.0,
+          15.0,
+          14.9,
+          15.5,
+          16.2,
+          17.7,
+          19.2,
+          20.4,
+          21.2,
+          22.4,
+          22.7,
+          23.1,
+          22.6,
+          21.4,
+          17.7,
+          18.8,
+          17.9,
+          17.0,
+          16.2
+        ],
+        [
+          97.0,
+          98.0,
+          99.0,
+          99.0,
+          99.0,
+          98.0,
+          99.0,
+          98.0,
+          97.0,
+          93.0,
+          86.0,
+          75.0,
+          70.0,
+          66.0,
+          62.0,
+          60.0,
+          57.0,
+          57.0,
+          63.0,
+          91.0,
+          77.0,
+          81.0,
+          87.0,
+          93.0
+        ],
+        [
+          100.0,
+          100.0,
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          96.0,
+          92.0,
+          94.0,
+          73.0,
+          63.0,
+          33.0,
+          49.0,
+          67.0,
+          93.0,
+          84.0,
+          88.0,
+          95.0,
+          95.0
+        ],
+        [
+          0.0,
+          0.1,
+          0.1,
+          0.1,
+          0.0,
+          0.0,
+          0.2,
+          0.1,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.2,
+          0.4,
+          0.0,
+          0.0,
+          0.2,
+          0.1,
+          0.0,
+          0.4,
+          0.2,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          21.4,
+          22.1,
+          22.7,
+          22.0,
+          22.1,
+          21.7,
+          22.0,
+          22.5,
+          20.2,
+          21.9,
+          22.7,
+          24.7,
+          26.1,
+          25.8,
+          23.9,
+          23.9,
+          23.2,
+          23.2,
+          20.1,
+          17.7,
+          19.8,
+          20.4,
+          23.2,
+          22.9
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          4.0,
+          41.0,
+          188.0,
+          422.0,
+          650.0,
+          781.0,
+          824.0,
+          857.0,
+          876.0,
+          761.0,
+          627.0,
+          428.0,
+          197.0,
+          30.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          22.2,
+          22.1,
+          22.2,
+          21.8,
+          21.6,
+          21.5,
+          21.6,
+          21.6,
+          22.6,
+          23.6,
+          24.9,
+          26.4,
+          26.9,
+          28.6,
+          29.2,
+          27.8,
+          27.7,
+          27.3,
+          27.0,
+          25.4,
+          25.0,
+          24.2,
+          23.4,
+          22.8
+        ],
+        [
+          73.0,
+          74.0,
+          79.0,
+          81.0,
+          83.0,
+          84.0,
+          85.0,
+          84.0,
+          83.0,
+          77.0,
+          70.0,
+          64.0,
+          62.0,
+          56.0,
+          53.0,
+          60.0,
+          59.0,
+          61.0,
+          61.0,
+          70.0,
+          70.0,
+          75.0,
+          78.0,
+          81.0
+        ],
+        [
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          97.0,
+          71.0,
+          68.0,
+          91.0,
+          84.0,
+          95.0,
+          97.0,
+          98.0,
+          83.0,
+          98.0,
+          51.0,
+          45.0,
+          65.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          1.0,
+          0.9,
+          0.6,
+          0.2,
+          0.1,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          13.6,
+          15.7,
+          15.8,
+          15.0,
+          14.2,
+          16.2,
+          16.7,
+          17.1,
+          18.1,
+          19.8,
+          21.1,
+          21.5,
+          18.9,
+          19.3,
+          18.2,
+          17.8,
+          20.2,
+          19.1,
+          17.4,
+          17.5,
+          14.8,
+          16.2,
+          16.9,
+          15.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          17.0,
+          135.0,
+          273.0,
+          382.0,
+          611.0,
+          569.0,
+          865.0,
+          871.0,
+          767.0,
+          629.0,
+          478.0,
+          314.0,
+          143.0,
+          18.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        1.85,
+        -1.45,
+        -0.89,
+        -0.39,
+        -0.3,
+        -1.27,
+        -1.7,
+        -1.08,
+        -0.75,
+        -9.49,
+        -27.6,
+        -12.9,
+        1.44,
+        20.54,
+        -49.37,
+        -114.88,
+        -20.15,
+        87.5,
+        60.32,
+        12.36,
+        17.36,
+        -1.85,
+        -1.86,
+        -2.49
+      ],
+      "rt": [
+        382.81,
+        378.31,
+        375.33,
+        374.67,
+        374.75,
+        373.89,
+        375.43,
+        376.83,
+        370.93,
+        352.5,
+        323.77,
+        278.74,
+        271.15,
+        273.38,
+        219.08,
+        171.56,
+        332.65,
+        402.3,
+        455.26,
+        394.76,
+        400.32,
+        385.48,
+        384.92,
+        378.57
+      ],
+      "da": [
+        380.96,
+        379.76,
+        376.22,
+        375.06,
+        375.05,
+        375.16,
+        377.13,
+        377.91,
+        371.68,
+        361.99,
+        351.37,
+        291.64,
+        269.71,
+        252.84,
+        268.45,
+        286.44,
+        352.8,
+        314.8,
+        394.94,
+        382.4,
+        382.96,
+        387.33,
+        386.78,
+        381.06
+      ],
+      "load": [
+        0.7804,
+        0.6204,
+        0.6204,
+        0.5004,
+        0.5404,
+        0.4604,
+        0.5004,
+        0.5004,
+        0.6604,
+        0.9804,
+        1.1804,
+        1.3404,
+        1.4604,
+        1.4204,
+        1.5804,
+        1.6204,
+        1.7004,
+        1.6204,
+        1.4604,
+        1.5004,
+        1.5804,
+        1.5004,
+        1.2204,
+        0.9804
+      ]
+    },
+    {
+      "date": "2026-06-11",
+      "weekday": "周四",
+      "weekday_num": 3,
+      "day_type": "weekday",
+      "day_type_cn": "工作日",
+      "month": 6,
+      "season": "夏",
+      "cust_count": 3,
+      "cust_mismatch": false,
+      "score": 0.723,
+      "w_dist": 1.082,
+      "c_pen": 0.073,
+      "cal_detail": {
+        "cust_count": 0.0,
+        "day_type": 0.0,
+        "weekday": 0.013,
+        "month": 0.04,
+        "season": 0.02,
+        "holiday_edge": 0.0
+      },
+      "color": "#457b9d",
+      "weather_w": [
+        [
+          9.8,
+          10.2,
+          10.4,
+          10.3,
+          10.7,
+          10.8,
+          10.9,
+          11.2,
+          11.9,
+          13.3,
+          14.6,
+          15.9,
+          16.5,
+          18.2,
+          17.2,
+          17.8,
+          16.8,
+          16.6,
+          16.9,
+          16.1,
+          14.3,
+          13.4,
+          13.0,
+          13.0
+        ],
+        [
+          84.0,
+          86.0,
+          85.0,
+          86.0,
+          83.0,
+          84.0,
+          79.0,
+          74.0,
+          75.0,
+          66.0,
+          59.0,
+          54.0,
+          54.0,
+          56.0,
+          58.0,
+          56.0,
+          63.0,
+          66.0,
+          66.0,
+          72.0,
+          78.0,
+          82.0,
+          87.0,
+          90.0
+        ],
+        [
+          89.0,
+          100.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          97.0,
+          56.0,
+          63.0,
+          26.0,
+          73.0,
+          74.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          95.0,
+          88.0,
+          98.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1
+        ],
+        [
+          1.8,
+          0.0,
+          1.5,
+          1.2,
+          0.0,
+          0.9,
+          2.1,
+          4.8,
+          0.7,
+          4.0,
+          7.1,
+          9.0,
+          10.5,
+          13.9,
+          16.4,
+          16.9,
+          19.0,
+          18.6,
+          20.7,
+          21.3,
+          18.3,
+          17.5,
+          17.3,
+          18.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          12.0,
+          131.0,
+          397.0,
+          618.0,
+          830.0,
+          783.0,
+          911.0,
+          513.0,
+          576.0,
+          264.0,
+          197.0,
+          234.0,
+          137.0,
+          27.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "weather_g": [
+        [
+          17.4,
+          17.0,
+          17.2,
+          17.4,
+          17.4,
+          17.3,
+          17.2,
+          17.6,
+          19.7,
+          21.6,
+          22.5,
+          23.7,
+          25.0,
+          25.3,
+          25.7,
+          25.9,
+          25.4,
+          24.7,
+          24.0,
+          23.2,
+          23.1,
+          21.9,
+          21.4,
+          21.2
+        ],
+        [
+          79.0,
+          80.0,
+          80.0,
+          81.0,
+          82.0,
+          81.0,
+          84.0,
+          81.0,
+          75.0,
+          64.0,
+          57.0,
+          51.0,
+          49.0,
+          48.0,
+          46.0,
+          47.0,
+          49.0,
+          52.0,
+          59.0,
+          68.0,
+          67.0,
+          68.0,
+          68.0,
+          67.0
+        ],
+        [
+          59.0,
+          59.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          100.0,
+          84.0,
+          73.0,
+          89.0,
+          98.0,
+          81.0,
+          91.0,
+          99.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          99.0,
+          100.0,
+          100.0,
+          95.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          2.7,
+          1.0,
+          0.6,
+          0.0,
+          1.0,
+          2.5,
+          2.3,
+          3.2,
+          4.0,
+          5.8,
+          6.2,
+          4.1,
+          4.1,
+          8.0,
+          6.0,
+          5.3,
+          3.6,
+          9.7,
+          7.0,
+          3.5,
+          4.0,
+          7.3,
+          5.9,
+          5.2
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          23.0,
+          183.0,
+          405.0,
+          471.0,
+          642.0,
+          885.0,
+          747.0,
+          727.0,
+          677.0,
+          392.0,
+          230.0,
+          130.0,
+          52.0,
+          8.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "spread": [
+        -170.9,
+        -144.88,
+        -156.03,
+        -124.27,
+        -190.17,
+        -167.03,
+        -68.99,
+        -40.62,
+        -54.92,
+        -95.79,
+        -167.57,
+        -104.35,
+        -95.89,
+        -121.93,
+        -41.51,
+        -63.61,
+        -55.3,
+        22.14,
+        8.81,
+        -0.88,
+        -13.83,
+        -23.24,
+        -59.53,
+        -65.59
+      ],
+      "rt": [
+        198.03,
+        224.68,
+        211.15,
+        240.98,
+        174.98,
+        198.29,
+        298.46,
+        323.96,
+        305.73,
+        254.15,
+        165.32,
+        207.48,
+        225.09,
+        206.26,
+        275.78,
+        264.07,
+        292.71,
+        383.62,
+        374.72,
+        363.45,
+        354.06,
+        346.46,
+        308.9,
+        300.97
+      ],
+      "da": [
+        368.93,
+        369.56,
+        367.18,
+        365.25,
+        365.15,
+        365.32,
+        367.45,
+        364.58,
+        360.65,
+        349.94,
+        332.89,
+        311.83,
+        320.98,
+        328.19,
+        317.29,
+        327.68,
+        348.01,
+        361.48,
+        365.91,
+        364.33,
+        367.89,
+        369.7,
+        368.43,
+        366.56
+      ],
+      "load": [
+        0.4892,
+        0.5292,
+        0.4892,
+        0.4092,
+        0.4092,
+        0.4092,
+        0.3292,
+        0.4892,
+        0.5292,
+        0.8892,
+        1.0092,
+        1.1692,
+        1.2892,
+        1.1692,
+        1.3692,
+        1.1292,
+        1.4092,
+        1.2892,
+        1.3292,
+        1.2492,
+        1.2892,
+        1.2092,
+        0.9292,
+        0.8092
+      ]
+    }
+  ],
+  "any_cust_mismatch": false,
+  "arbitrage": {
+    "base": [
+      0.678,
+      0.5924,
+      0.4966,
+      0.4878,
+      0.4289,
+      0.4422,
+      0.4048,
+      0.4504,
+      0.6173,
+      0.9319,
+      1.0549,
+      1.2375,
+      1.272,
+      1.2557,
+      1.3708,
+      1.3927,
+      1.457,
+      1.4421,
+      1.3399,
+      1.3646,
+      1.3794,
+      1.3063,
+      1.0696,
+      0.8412
+    ],
+    "declared": [
+      0.6383,
+      0.5734,
+      0.4783,
+      0.4878,
+      0.4131,
+      0.4259,
+      0.3899,
+      0.4265,
+      0.6173,
+      0.882,
+      0.9984,
+      1.1988,
+      1.272,
+      1.2557,
+      1.3285,
+      1.3498,
+      1.5072,
+      1.5679,
+      1.394,
+      1.3996,
+      1.3794,
+      1.2537,
+      1.0696,
+      0.8073
+    ],
+    "pos": [
+      -0.0397,
+      -0.0189,
+      -0.0183,
+      0.0,
+      -0.0158,
+      -0.0163,
+      -0.0149,
+      -0.0239,
+      0.0,
+      -0.0499,
+      -0.0564,
+      -0.0386,
+      0.0,
+      0.0,
+      -0.0423,
+      -0.043,
+      0.0501,
+      0.1258,
+      0.0541,
+      0.0351,
+      0.0,
+      -0.0526,
+      0.0,
+      -0.0339
+    ],
+    "spread": [
+      -24.92,
+      -17.81,
+      44.88,
+      28.72,
+      43.89,
+      13.01,
+      18.75,
+      -0.21,
+      44.35,
+      35.72,
+      -9.87,
+      -18.85,
+      -32.51,
+      -26.93,
+      -19.72,
+      -8.7,
+      39.98,
+      62.59,
+      40.5,
+      72.95,
+      32.39,
+      -15.54,
+      -14.63,
+      -15.86
+    ],
+    "pct": [
+      -5.86,
+      -3.2,
+      -3.68,
+      0.0,
+      -3.68,
+      -3.68,
+      -3.68,
+      -5.31,
+      0.0,
+      -5.35,
+      -5.35,
+      -3.12,
+      0.0,
+      0.0,
+      -3.08,
+      -3.08,
+      3.44,
+      8.72,
+      4.04,
+      2.57,
+      0.0,
+      -4.03,
+      0.0,
+      -4.03
+    ],
+    "base_scaled": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "prob_long": [
+      0.2071,
+      0.3402,
+      0.3159,
+      0.4232,
+      0.3159,
+      0.3159,
+      0.3159,
+      0.2344,
+      0.5406,
+      0.2325,
+      0.2325,
+      0.3439,
+      0.5524,
+      0.5543,
+      0.3458,
+      0.3458,
+      0.6721,
+      0.9362,
+      0.7018,
+      0.6285,
+      0.5133,
+      0.2987,
+      0.4059,
+      0.2987
+    ],
+    "prob_short": [
+      0.7929,
+      0.6598,
+      0.6841,
+      0.5768,
+      0.6841,
+      0.6841,
+      0.6841,
+      0.7656,
+      0.4594,
+      0.7675,
+      0.7675,
+      0.6561,
+      0.4476,
+      0.4457,
+      0.6542,
+      0.6542,
+      0.3279,
+      0.0638,
+      0.2982,
+      0.3715,
+      0.4867,
+      0.7013,
+      0.5941,
+      0.7013
+    ],
+    "net_prob": [
+      -0.5858,
+      -0.3197,
+      -0.3681,
+      -0.1537,
+      -0.3681,
+      -0.3681,
+      -0.3681,
+      -0.5312,
+      0.0813,
+      -0.535,
+      -0.535,
+      -0.3122,
+      0.1048,
+      0.1086,
+      -0.3084,
+      -0.3084,
+      0.3442,
+      0.8724,
+      0.4036,
+      0.2571,
+      0.0266,
+      -0.4027,
+      -0.1882,
+      -0.4027
+    ]
+  },
+  "max_long_ratio": 10.0,
+  "max_short_ratio": 10.0,
+  "min_prob_threshold": 20.0
+};
+
+// 工具函数
+const HL = D.hour_labels;
+const noNull = arr => arr.map(v => v === null ? 0 : v);
+
+function mkChart(id, cfg) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return null;
+  return new Chart(ctx, cfg);
+}
+
+const baseOpts = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: { labels: { color: '#8892b0', font: { size: 11 } } },
+    tooltip: { mode: 'index', intersect: false }
+  },
+  scales: {
+    x: { ticks: { color: '#8892b0', font: { size: 10 } }, grid: { color: '#2d3148' } },
+    y: { ticks: { color: '#8892b0', font: { size: 10 } }, grid: { color: '#2d3148' } },
+  }
+};
+
+function deepMerge(a, b) {
+  const out = { ...a };
+  for (const k of Object.keys(b)) {
+    if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) {
+      out[k] = deepMerge(a[k] || {}, b[k]);
+    } else { out[k] = b[k]; }
+  }
+  return out;
+}
+
+function opts(extra) { return deepMerge(baseOpts, extra || {}); }
+
+// ── 自定义图例（支持全选/全不选）──
+function buildCustomLegend(chart, canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !chart) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'custom-legend-wrap';
+
+  // 全选 / 全不选 按钮行
+  const ctrlRow = document.createElement('div');
+  ctrlRow.className = 'legend-ctrl-row';
+
+  const btnAll  = document.createElement('button');
+  btnAll.className  = 'legend-ctrl-btn';
+  btnAll.textContent = '全选';
+  btnAll.onclick = () => {
+    chart.data.datasets.forEach((_, i) => chart.setDatasetVisibility(i, true));
+    chart.update('none');
+    refresh();
+  };
+
+  const btnNone = document.createElement('button');
+  btnNone.className  = 'legend-ctrl-btn';
+  btnNone.textContent = '全不选';
+  btnNone.onclick = () => {
+    chart.data.datasets.forEach((_, i) => chart.setDatasetVisibility(i, false));
+    chart.update('none');
+    refresh();
+  };
+
+  const hint = document.createElement('span');
+  hint.style.cssText = 'font-size:11px;color:#556;margin-left:4px';
+  hint.textContent = '点击图例项可切换显示';
+
+  ctrlRow.appendChild(btnAll);
+  ctrlRow.appendChild(btnNone);
+  ctrlRow.appendChild(hint);
+  wrap.appendChild(ctrlRow);
+
+  const itemsDiv = document.createElement('div');
+  itemsDiv.className = 'legend-items';
+  wrap.appendChild(itemsDiv);
+
+  canvas.parentNode.insertBefore(wrap, canvas);
+
+  function refresh() {
+    itemsDiv.innerHTML = '';
+    chart.data.datasets.forEach((ds, i) => {
+      const visible = chart.isDatasetVisible(i);
+      const color   = ds.borderColor || (typeof ds.backgroundColor==='string' ? ds.backgroundColor : '#888');
+      const isDashed = Array.isArray(ds.borderDash) && ds.borderDash.length > 0;
+
+      const item = document.createElement('span');
+      item.className = 'legend-item' + (visible ? '' : ' legend-item-hidden');
+
+      const sq = document.createElement('span');
+      sq.className = 'legend-dot-sq' + (isDashed ? ' dashed' : '');
+      sq.style.background = isDashed ? 'none' : color;
+      sq.style.color = color;
+      if (isDashed) sq.style.borderTop = `2px dashed ${color}`;
+
+      const lbl = document.createElement('span');
+      lbl.textContent = ds.label;
+
+      item.appendChild(sq);
+      item.appendChild(lbl);
+      item.onclick = () => {
+        chart.setDatasetVisibility(i, !chart.isDatasetVisible(i));
+        chart.update('none');
+        refresh();
+      };
+      itemsDiv.appendChild(item);
+    });
+  }
+
+  refresh();
+}
+
+// ① 概览统计
+(function() {
+  const arb   = D.arbitrage;
+  const base  = arb.base.reduce((s,v)=>s+v,0);
+  const decl  = arb.declared.reduce((s,v)=>s+v,0);
+  const maxPos= Math.max(...arb.pos.map(Math.abs));
+  const wSpr  = arb.spread.reduce((s,v)=>s+v,0)/24;
+  const tc    = D.target_calendar;
+  const tagCls = {weekday:'tag-work',makeup:'tag-makeup',weekend:'tag-weekend',holiday:'tag-holiday'};
+  const stats = [
+    { lbl:'申报日期', val: `${tc.weekday} <span class="tag ${tagCls[tc.day_type]}">${tc.day_type_cn}</span>`, raw:true },
+    { lbl:'月份 / 季节', val: `${tc.month}月 · ${tc.season}季`, cls:'neutral' },
+    { lbl:'当前客户数', val: `${tc.cust_count} 个`, cls: D.any_cust_mismatch ? 'negative' : 'positive' },
+    { lbl:'基准负荷总量', val: base.toFixed(2)+' MWh' + (D.any_cust_mismatch ? ' <small style="color:#ffd166">已缩放</small>' : ''), raw: D.any_cust_mismatch, cls:'neutral' },
+    { lbl:'申报电量总量', val: decl.toFixed(2)+' MWh', cls: decl>base?'positive':'negative' },
+    { lbl:'预期平均价差', val: wSpr.toFixed(1)+' ¥/MWh', cls: wSpr>0?'positive':'negative' },
+  ];
+  document.getElementById('stats-row').innerHTML = stats.map(s =>
+    `<div class="stat-box"><div class="stat-val ${s.cls||''}">${s.raw?s.val:s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`
+  ).join('');
+  document.getElementById('gentime').textContent = new Date().toLocaleString('zh-CN');
+})();
+
+// ② 天气图（温度+降水）
+mkChart('chart-tw-temp', {
+  type:'line', data:{
+    labels: HL,
+    datasets:[
+      { label:'温度(°C)', data: noNull(D.weather_w.temp), borderColor:'#ff9f43', backgroundColor:'rgba(255,159,67,0.15)', fill:true, tension:0.4, yAxisID:'yT', pointRadius:0 },
+      { label:'降水(mm)', data: noNull(D.weather_w.precip), type:'bar', backgroundColor:'rgba(142,202,230,0.5)', yAxisID:'yP' },
+    ]
+  },
+  options: opts({ scales:{ yT:{ position:'left', ticks:{color:'#ff9f43',font:{size:10}}, grid:{color:'#2d3148'} }, yP:{ position:'right', ticks:{color:'#8ecae6',font:{size:10}}, grid:{display:false} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} } })
+});
+
+mkChart('chart-tg-temp', {
+  type:'line', data:{
+    labels: HL,
+    datasets:[
+      { label:'温度(°C)', data: noNull(D.weather_g.temp), borderColor:'#f4a261', backgroundColor:'rgba(244,162,97,0.15)', fill:true, tension:0.4, yAxisID:'yT', pointRadius:0 },
+      { label:'降水(mm)', data: noNull(D.weather_g.precip), type:'bar', backgroundColor:'rgba(244,162,97,0.4)', yAxisID:'yP' },
+    ]
+  },
+  options: opts({ scales:{ yT:{ position:'left', ticks:{color:'#f4a261',font:{size:10}}, grid:{color:'#2d3148'} }, yP:{ position:'right', ticks:{color:'#f4a261',font:{size:10}}, grid:{display:false} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} } })
+});
+
+mkChart('chart-tw-cloud', {
+  type:'bar', data:{
+    labels: HL,
+    datasets:[
+      { label:'云量(%)', data: noNull(D.weather_w.cloud), backgroundColor:'rgba(142,202,230,0.6)', yAxisID:'yC' },
+      { label:'辐射(W/m²)', data: noNull(D.weather_w.rad), type:'line', borderColor:'#ffd166', backgroundColor:'transparent', tension:0.4, yAxisID:'yR', pointRadius:0 },
+    ]
+  },
+  options: opts({ scales:{ yC:{ position:'left', ticks:{color:'#8ecae6',font:{size:10}}, grid:{color:'#2d3148'} }, yR:{ position:'right', ticks:{color:'#ffd166',font:{size:10}}, grid:{display:false} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} } })
+});
+
+mkChart('chart-tg-cloud', {
+  type:'bar', data:{
+    labels: HL,
+    datasets:[
+      { label:'云量(%)', data: noNull(D.weather_g.cloud), backgroundColor:'rgba(244,162,97,0.5)', yAxisID:'yC' },
+      { label:'辐射(W/m²)', data: noNull(D.weather_g.rad), type:'line', borderColor:'#ffd166', backgroundColor:'transparent', tension:0.4, yAxisID:'yR', pointRadius:0 },
+    ]
+  },
+  options: opts({ scales:{ yC:{ position:'left', ticks:{color:'#f4a261',font:{size:10}}, grid:{color:'#2d3148'} }, yR:{ position:'right', ticks:{color:'#ffd166',font:{size:10}}, grid:{display:false} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} } })
+});
+
+// ③-A 日历相似度评分明细表
+(function() {
+  const tc   = D.target_calendar;
+  const tagCls = {weekday:'tag-work',makeup:'tag-makeup',weekend:'tag-weekend',holiday:'tag-holiday'};
+  const thead = `<thead><tr>
+    <th>历史日期</th><th>星期</th><th>日期类型</th><th>月份</th><th>季节</th>
+    <th>客户数<br><small style="color:#8892b0">目标:3</small></th>
+    <th title="最大0.60">客户罚分</th>
+    <th title="最大0.16">类型罚分</th>
+    <th title="最大0.08">星期罚分</th>
+    <th title="最大0.08">月份罚分</th>
+    <th title="最大0.04">季节罚分</th>
+    <th title="最大0.04">节边罚分</th>
+    <th>日历总罚×0.4</th><th>天气距离×0.6</th><th>综合得分</th>
+  </tr></thead>`;
+  let tbody = '<tbody>';
+  for (const s of D.similar_days) {
+    const cd = s.cal_detail;
+    const bar = (v, max) => {
+      if (!v) return '<span style="color:#8892b0">0</span>';
+      const w = Math.round(v/max*36);
+      return `${v.toFixed(3)}<span class="score-bar" style="width:${w}px;background:rgba(255,107,107,${0.4+v/max*0.5})"></span>`;
+    };
+    const custWarn = s.cust_mismatch
+      ? `<span style="color:#ffd166;font-weight:700">${s.cust_count} ⚠</span>`
+      : `<span style="color:#64ffda">${s.cust_count} ✓</span>`;
+    const tagEl = `<span class="tag ${tagCls[s.day_type]}">${s.day_type_cn}</span>`;
+    tbody += `<tr>
+      <td style="color:${s.color};font-weight:700">${s.date}</td>
+      <td>${s.weekday}</td>
+      <td>${tagEl}</td>
+      <td>${s.month}月</td>
+      <td>${s.season}季</td>
+      <td style="text-align:center">${custWarn}</td>
+      <td>${bar(cd.cust_count||0, 0.24)}</td>
+      <td>${bar(cd.day_type||0, 0.16)}</td>
+      <td>${bar(cd.weekday||0, 0.08)}</td>
+      <td>${bar(cd.month||0, 0.08)}</td>
+      <td>${bar(cd.season||0, 0.04)}</td>
+      <td>${bar(cd.holiday_edge||0, 0.04)}</td>
+      <td><strong style="color:#ffd166">${s.c_pen.toFixed(3)}</strong></td>
+      <td><strong style="color:#8ecae6">${(s.w_dist*0.6).toFixed(3)}</strong></td>
+      <td><strong style="color:${s.color}">${s.score.toFixed(3)}</strong></td>
+    </tr>`;
+  }
+  tbody += '</tbody>';
+  document.getElementById('cal-score-table').innerHTML = thead + tbody;
+
+  if (D.any_cust_mismatch) {
+    document.getElementById('cust-mismatch-warn').style.display = 'block';
+  }
+})();
+
+// ③-B 相似日天气/负荷图
+
+// 工具：生成覆盖图（目标日粗线 + 相似日细虚线）
+function makeOverlayChart(id, targetData, simField, simIdx, label, targetColor, unit) {
+  const datasets = [
+    {
+      label: `申报日预报 ($2026-09-11)`,
+      data: noNull(targetData),
+      borderColor: targetColor,
+      backgroundColor: targetColor + '22',
+      fill: true,
+      borderWidth: 3,
+      tension: 0.4,
+      pointRadius: 0,
+      order: 0,
+    },
+    ...D.similar_days.map(s => ({
+      label: `${s.date}(${s.weekday}·${s.day_type_cn})`,
+      data: noNull(s[simField][simIdx]),
+      borderColor: s.color,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      tension: 0.4,
+      pointRadius: 0,
+      order: 1,
+    }))
+  ];
+  const chart = mkChart(id, {
+    type: 'line',
+    data: { labels: HL, datasets },
+    options: opts({
+      plugins: { legend: { display: false } },
+      scales: { y: { title: { display: true, text: label + ' (' + unit + ')', color: '#8892b0' } } }
+    })
+  });
+  buildCustomLegend(chart, id);
+}
+
+makeOverlayChart('chart-match-tw-temp', D.weather_w.temp, 'weather_w', 0, '温度', '#ff9f43', '°C');
+makeOverlayChart('chart-match-tg-temp', D.weather_g.temp, 'weather_g', 0, '温度', '#f4a261', '°C');
+makeOverlayChart('chart-match-tw-rad',  D.weather_w.rad,  'weather_w', 5, '辐射', '#ffd166', 'W/m²');
+makeOverlayChart('chart-match-tw-cloud',D.weather_w.cloud,'weather_w', 2, '云量', '#8ecae6', '%');
+
+const simLoadChart = mkChart('chart-sim-load', {
+  type:'line', data:{
+    labels: HL,
+    datasets: D.similar_days.map(s => ({
+      label: `${s.date}(${s.weekday}·${s.day_type_cn})`,
+      data: s.load,
+      borderColor: s.color,
+      backgroundColor: 'transparent',
+      tension: 0.4, borderWidth: 2, pointRadius: 0,
+    }))
+  },
+  options: opts({ plugins:{ legend:{ display:false } }, scales:{ y:{ title:{ display:true, text:'负荷(MWh)', color:'#8892b0' } } } })
+});
+buildCustomLegend(simLoadChart, 'chart-sim-load');
+
+const simPrecipChart = mkChart('chart-sim-precip', {
+  type:'bar', data:{
+    labels: HL,
+    datasets: D.similar_days.map(s => ({
+      label: `${s.date}(${s.weekday})`,
+      data: noNull(s.weather_w[3]),
+      backgroundColor: s.color + '99',
+      borderColor: s.color,
+      borderWidth: 1,
+    }))
+  },
+  options: opts({ plugins:{ legend:{ display:false } }, scales:{ y:{ title:{ display:true, text:'降水(mm)', color:'#8892b0'} } } })
+});
+buildCustomLegend(simPrecipChart, 'chart-sim-precip');
+
+mkChart('chart-sim-cloud', {
+  type:'line', data:{
+    labels: HL,
+    datasets: D.similar_days.map(s => ({
+      label: `${s.date}(${s.weekday})`,
+      data: noNull(s.weather_g[2]),
+      borderColor: s.color,
+      backgroundColor: 'transparent',
+      tension: 0.4, borderWidth: 2, pointRadius: 0,
+    }))
+  },
+  options: opts({ plugins:{ legend:{ display:true } }, scales:{ y:{ title:{ display:true, text:'云量(%)', color:'#8892b0'} } } })
+});
+
+// ④ 价差切换
+let spreadChart = null, priceChart = null;
+(function() {
+  const tabsEl  = document.getElementById('spread-tabs');
+  const tabsEl2 = document.getElementById('price-tabs');
+  D.similar_days.forEach((s, idx) => {
+    const label = `${s.date} ${s.weekday}·${s.day_type_cn}`;
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (idx===0?' active':'');
+    btn.textContent = label;
+    btn.style.borderColor = idx===0 ? s.color : '';
+    btn.style.color = idx===0 ? s.color : '';
+    btn.onclick = () => {
+      tabsEl.querySelectorAll('.tab').forEach(b=>{ b.classList.remove('active'); b.style.borderColor=''; b.style.color=''; });
+      btn.classList.add('active'); btn.style.borderColor=s.color; btn.style.color=s.color;
+      updateSpreadChart(idx);
+    };
+    tabsEl.appendChild(btn);
+
+    const btn2 = document.createElement('button');
+    btn2.className = 'tab' + (idx===0?' active':'');
+    btn2.textContent = label;
+    btn2.style.borderColor = idx===0 ? s.color : '';
+    btn2.style.color = idx===0 ? s.color : '';
+    btn2.onclick = () => {
+      tabsEl2.querySelectorAll('.tab').forEach(b=>{ b.classList.remove('active'); b.style.borderColor=''; b.style.color=''; });
+      btn2.classList.add('active'); btn2.style.borderColor=s.color; btn2.style.color=s.color;
+      updatePriceChart(idx);
+    };
+    tabsEl2.appendChild(btn2);
+  });
+
+  function updateSpreadChart(idx) {
+    const s = D.similar_days[idx];
+    if (spreadChart) spreadChart.destroy();
+    spreadChart = mkChart('chart-spread', {
+      type:'bar', data:{
+        labels: HL,
+        datasets:[{
+          label:'价差(实时-日前) 元/MWh',
+          data: s.spread,
+          backgroundColor: s.spread.map(v=>v>0?'rgba(100,255,218,0.7)':'rgba(255,107,107,0.7)'),
+          borderColor:      s.spread.map(v=>v>0?'#64ffda':'#ff6b6b'),
+          borderWidth:1
+        // 绿色(>0)=实时贵/日前便宜→多申报  红色(<0)=实时便宜→少申报
+        }]
+      },
+      options: opts({
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.parsed.y.toFixed(2)} 元/MWh` } } },
+        scales:{ y:{ title:{ display:true, text:'价差(元/MWh)', color:'#8892b0' }, grid:{color:'#2d3148'}, ticks:{color:'#8892b0', font:{size:10}} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} }
+      })
+    });
+  }
+
+  function updatePriceChart(idx) {
+    const s = D.similar_days[idx];
+    if (priceChart) priceChart.destroy();
+    priceChart = mkChart('chart-price', {
+      type:'line', data:{
+        labels: HL,
+        datasets:[
+          { label:'实时价格', data: s.rt, borderColor:'#ff6b6b', backgroundColor:'transparent', tension:0.4, borderWidth:2, pointRadius:0 },
+          { label:'日前价格', data: s.da, borderColor:'#64ffda', backgroundColor:'transparent', tension:0.4, borderWidth:2, pointRadius:0, borderDash:[5,3] },
+        ]
+      },
+      options: opts({
+        scales:{ y:{ title:{ display:true, text:'价格(元/MWh)', color:'#8892b0' }, grid:{color:'#2d3148'}, ticks:{color:'#8892b0',font:{size:10}} }, x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}} }
+      })
+    });
+  }
+
+  if (D.similar_days.length > 0) {
+    updateSpreadChart(0);
+    updatePriceChart(0);
+  }
+})();
+
+// ⑤ 套利方案
+const arb = D.arbitrage;
+mkChart('chart-arb-load', {
+  type:'line', data:{
+    labels: HL,
+    datasets:[
+      { label:'基准负荷', data:arb.base, borderColor:'#8892b0', backgroundColor:'rgba(136,146,176,0.1)', fill:true, tension:0.4, borderWidth:2, pointRadius:0 },
+      { label:'申报电量', data:arb.declared, borderColor:'#64ffda', backgroundColor:'rgba(100,255,218,0.15)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:0 },
+    ]
+  },
+  options: opts({ scales:{ y:{ title:{ display:true, text:'电量(MWh)', color:'#8892b0' } } } })
+});
+
+mkChart('chart-arb-pos', {
+  type:'bar', data:{
+    labels: HL,
+    datasets:[
+      { label:'净方向概率', data:arb.net_prob.map(v=>v*100), type:'line', borderColor:'#ffd166', backgroundColor:'transparent', tension:0.4, borderWidth:2, pointRadius:0, yAxisID:'yS' },
+      { label:'投机头寸', data:arb.pos, backgroundColor:arb.pos.map(v=>v>0?'rgba(100,255,218,0.7)':'rgba(255,107,107,0.7)'), borderColor:arb.pos.map(v=>v>0?'#64ffda':'#ff6b6b'), borderWidth:1, yAxisID:'yP' },
+    ]
+  },
+  options: opts({
+    scales:{
+      yS:{ position:'right', ticks:{color:'#ffd166',font:{size:10},callback:v=>v.toFixed(0)+'%'}, grid:{display:false}, title:{display:true,text:'净方向概率(%)',color:'#ffd166'}, min:-100, max:100 },
+      yP:{ position:'left',  ticks:{color:'#64ffda',font:{size:10}}, grid:{color:'#2d3148'}, title:{display:true,text:'头寸(MWh)',color:'#64ffda'} },
+      x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#2d3148'}}
+    }
+  })
+});
+
+// 详细表格
+(function() {
+  const tbl = document.getElementById('arb-table');
+  const thresh = D.min_prob_threshold || 0;
+  const thead = `<thead><tr>
+    <th>时段</th><th>基准负荷(MWh)</th><th>加权价差(¥/MWh)</th>
+    <th>看多概率</th><th>看空概率</th><th>净方向概率</th>
+    <th>投机头寸(MWh)</th><th>头寸比例</th><th>申报电量(MWh)</th>
+  </tr></thead>`;
+  let tbody = '<tbody>';
+  for (let h=0; h<24; h++) {
+    const pos  = arb.pos[h], pct = arb.pct[h], spr = arb.spread[h];
+    const pl   = arb.prob_long[h], ps = arb.prob_short[h], np = arb.net_prob[h];
+    const pCls = pos > 0 ? 'positive' : pos < 0 ? 'negative' : '';
+    const sCls = spr > 0 ? 'negative' : spr < 0 ? 'positive' : '';
+    const npCls = np > 0 ? 'positive' : np < 0 ? 'negative' : '';
+    const pill = pct > 0 ? `<span class="pill pill-pos">+${pct.toFixed(1)}%</span>` :
+                 pct < 0 ? `<span class="pill pill-neg">${pct.toFixed(1)}%</span>` :
+                           `<span class="pill pill-neu">0%</span>`;
+    const npAbs = Math.abs(np)*100;
+    const npBar = npAbs >= thresh
+      ? `<span style="font-weight:600" class="${npCls}">${np>=0?'+':''}${(np*100).toFixed(1)}%</span>`
+      : `<span style="color:#555;font-size:0.85em">${(np*100).toFixed(1)}% <em>(低于阈值)</em></span>`;
+    tbody += `<tr>
+      <td>${HL[h]}</td>
+      <td>${arb.base[h].toFixed(3)}</td>
+      <td class="${sCls}">${spr.toFixed(2)}</td>
+      <td class="positive">${(pl*100).toFixed(1)}%</td>
+      <td class="negative">${(ps*100).toFixed(1)}%</td>
+      <td>${npBar}</td>
+      <td class="${pCls}">${pos >= 0 ? '+' : ''}${pos.toFixed(3)}</td>
+      <td>${pill}</td>
+      <td><strong>${arb.declared[h].toFixed(3)}</strong></td>
+    </tr>`;
+  }
+  tbody += '</tbody>';
+  tbl.innerHTML = thead + tbody;
+})();
+</script>
+</body>
+</html>
