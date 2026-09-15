@@ -156,7 +156,7 @@ def upsert_weather(conn, rows):
 
 
 def get_series(conn, day, location, source, variable):
-    """取某站某日某源某要素的 24 小时序列；无数据返回 None。"""
+    """取某站某日某源某要素的 24 小时序列；无数据（或整列全空）返回 None。"""
     if variable not in VARIABLES:
         raise ValueError(f"未知要素：{variable}")
     cur = conn.execute(
@@ -170,12 +170,15 @@ def get_series(conn, day, location, source, variable):
     found = dict(cur.fetchall())
     if not found:
         return None
-    return [found.get(h) for h in range(24)]
+    series = [found.get(h) for h in range(24)]
+    if all(v is None for v in series):
+        return None  # 接口对超出范围的日期会返回整列空值，视为缺失
+    return series
 
 
 def pick_series(conn, day, location, role, variable, override=None):
-    """按角色优先级取序列，命中即返回；都没有返回 None。"""
-    sources = [override] if override else SOURCE_PRIORITY[role]
+    """按角色取数顺序取序列，命中即返回；都没有返回 None。"""
+    sources = [override] if override else _source_order(role, day)
     for src in sources:
         series = get_series(conn, day, location, src, variable)
         if series is not None:
@@ -268,6 +271,8 @@ def fetch_weather(conn, location, start, end, source):
             column_series[key][idx] if idx < len(column_series[key]) else None
             for key in VARIABLE_ORDER
         ]
+        if all(v is None for v in values):
+            continue  # 超出接口范围的日期会返回整列空值，不入库
         rows.append((day, location, int(clock[:2]), source, *values))
     if not rows:
         raise RuntimeError(f"{source} 未返回数据（{start}~{end} {location}）")
@@ -275,12 +280,11 @@ def fetch_weather(conn, location, start, end, source):
 
 
 def ensure_day(conn, day, location, role, force=False):
-    """确保某日某站数据已入库；返回 (使用的源, 写入条数)。"""
-    sources = SOURCE_PRIORITY[role]
-    if not force:
-        for src in sources:
-            if get_series(conn, day, location, src, "temp") is not None:
-                return src, 0
+    """确保某日某站的「首选数据源」已入库；返回 (使用的源, 写入条数)。"""
+    sources = _source_order(role, day)
+    primary = sources[0]
+    if not force and get_series(conn, day, location, primary, "temp") is not None:
+        return primary, 0
 
     errors = []
     for src in sources:
@@ -331,8 +335,8 @@ def report_dates(data):
 
 ROLE_ORDER = ("target", "similar")
 
-# 预报接口的可回溯窗口（天）；更早的日期直接用历史预报接口
-FORECAST_WINDOW_DAYS = 92
+# 预报接口只保留最近几天的历史；更早的日期用历史预报接口（当时的预报）
+FORECAST_WINDOW_DAYS = 5
 # 合并日期区间时允许的最大空隙（天），空隙内多抓几天无害且能显著减少调用
 MAX_GAP_DAYS = 7
 
@@ -346,6 +350,12 @@ def _primary_source(role, day):
             return SOURCE_PRIORITY[role][0]
         return "forecast" if age <= FORECAST_WINDOW_DAYS else "historical_forecast"
     return SOURCE_PRIORITY[role][0]
+
+
+def _source_order(role, day):
+    """该日期该角色的取数顺序：首选源优先，其余依次回退。"""
+    primary = _primary_source(role, day)
+    return [primary] + [s for s in SOURCE_PRIORITY[role] if s != primary]
 
 
 def _merge_ranges(days, max_gap_days=MAX_GAP_DAYS):
@@ -406,11 +416,9 @@ def plan_missing(conn, requirements):
         for role in ROLE_ORDER:
             if role not in requirements[day]:
                 continue
+            required = _primary_source(role, day)
             for location in LOCATIONS:
-                if any(
-                    get_series(conn, day, location, src, "temp") is not None
-                    for src in SOURCE_PRIORITY[role]
-                ):
+                if get_series(conn, day, location, required, "temp") is not None:
                     present += 1
                 else:
                     missing.append((day, role, location))
