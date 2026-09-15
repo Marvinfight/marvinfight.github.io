@@ -1,0 +1,1281 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>湖南天气看板</title>
+<script src="hunan_weather_data.js"></script>
+<script src="hunan_market_data_v2.js"></script>
+<script src="hunan_hypower_data.js"></script>
+<script src="hunan_hypower_history.js"></script>
+<script src="plan_forecast_data.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e14;color:#b0bec5;font-family:'Microsoft YaHei',sans-serif;font-size:13px}
+.topbar{background:#111820;border-bottom:1px solid #1a2532;padding:10px 28px;display:flex;justify-content:space-between;align-items:center}
+.topbar h1{font-size:16px;color:#4fc3f7}
+.tabs{display:flex;gap:0;padding:0 28px;background:#0d131b;border-bottom:1px solid #1a2532}
+.tab{padding:10px 24px;cursor:pointer;color:#546e7a;font-size:13px;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:#b0bec5}
+.tab.active{color:#4fc3f7;border-bottom-color:#4fc3f7}
+#err{display:none;background:#3e1010;color:#ef5350;padding:8px 28px;font-size:12px}
+#info{background:#0f2215;color:#66bb6a;padding:6px 28px;font-size:11px}
+.metrics-row{display:flex;gap:10px;padding:14px 28px 6px;flex-wrap:wrap}
+.metric{background:#111820;border:1px solid #1e2a36;border-radius:8px;padding:12px 16px;flex:1;text-align:center;min-width:130px}
+.metric .m-label{font-size:10px;color:#546e7a;letter-spacing:1px}
+.metric .m-value{font-size:24px;font-weight:700}
+.metric .m-sub{font-size:10px;color:#37474f;margin-top:2px}
+.c-w{color:#4fc3f7}.c-d{color:#ffb74d}.c-t{color:#ef5350}.c-p{color:#81c784}
+.c-m{color:#ce93d8}.c-o{color:#ffab00}.c-g{color:#66bb6a}.c-b{color:#42a5f5}
+.filter-row{display:flex;align-items:center;gap:8px;padding:8px 28px;flex-wrap:wrap}
+.qb{font-size:11px;padding:5px 12px;background:#161c24;border:1px solid #1e2a36;color:#78909c;border-radius:5px;cursor:pointer;transition:all .2s}
+.qb:hover{color:#fff;border-color:#2a3a4a}
+.date-select{position:relative}
+.date-select .trigger{background:#161c24;border:1px solid #1e2a36;color:#78909c;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:11px;min-width:110px}
+.date-select .trigger:hover{border-color:#2a3a4a;color:#b0bec5}
+.date-select .dropdown{display:none;position:absolute;top:100%;left:0;z-index:100;background:#111820;border:1px solid #1e2a36;border-radius:6px;margin-top:4px;min-width:260px;max-height:320px;overflow-y:auto;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.date-select.open .dropdown{display:block}
+.dropdown .group-label{font-size:10px;color:#4fc3f7;padding:4px 8px;border-bottom:1px solid #1e2a36;margin-bottom:4px;font-weight:600}
+.dropdown label{display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:11px;color:#90a4ae;cursor:pointer;border-radius:3px}
+.dropdown label:hover{background:#1a2535;color:#fff}
+.dropdown input[type=checkbox]{accent-color:#4fc3f7;width:13px;height:13px}
+.tag-his{font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(79,195,247,0.15);color:#4fc3f7}
+.tag-fc{font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(255,152,0,0.15);color:#ffb74d}
+.date-bar{text-align:center;padding:8px 28px;color:#4fc3f7;font-size:13px;font-weight:600}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 28px 16px}
+@media(max-width:1100px){.charts-grid{grid-template-columns:1fr}}
+.chart-card{background:linear-gradient(160deg,#0d131b,#101821);border:1px solid #17212e;border-radius:10px;padding:14px}
+.chart-card.wide{grid-column:1/-1}
+.chart-card h3{color:#90a4ae;font-size:12px;margin-bottom:8px;padding-left:8px;border-left:3px solid #4fc3f7}
+.chart-box{width:100%;height:310px}
+.chart-box.tall{height:360px}
+.summary-table{width:100%;border-collapse:collapse;font-size:11px}
+.summary-table th{background:#111820;color:#78909c;padding:6px;border-bottom:2px solid #1e2a36;font-size:10px;text-align:center;position:sticky;top:0}
+.summary-table td{padding:5px 6px;border-bottom:1px solid #141c26;text-align:center}
+.summary-table tr:nth-child(even){background:#0f151d}
+.summary-table tr:hover{background:#182230}
+.footer{text-align:center;padding:12px;color:#37474f;font-size:10px;border-top:1px solid #1a2532;margin-top:16px}
+.panel{display:none}
+.panel.active{display:block}
+</style></head><body>
+
+<div class="topbar">
+    <h1>🌤 湖南新能源数据看板</h1>
+    <div class="info" id="topInfo">--</div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchTab('weather')">🌤 天气看板</div>
+    <div class="tab" onclick="switchTab('market')">📊 市场信息</div>
+    <div class="tab" onclick="switchTab('hydro')">💧 水电监测</div>
+    <div class="tab" onclick="switchTab('predict')">🔮 出力预测</div>
+    <div class="tab" onclick="switchTab('spot')">💰 现货价格</div>
+    <div class="tab" onclick="switchTab('sr')">📐 供给率对比</div>
+</div>
+
+<div id="err"></div>
+<div id="info"></div>
+
+<!-- date filter shared -->
+<div class="filter-row">
+    <span class="qb" onclick="quickSel('history')">📅 历史14天</span>
+    <span class="qb" onclick="quickSel('forecast')">🔮 预测7天</span>
+    <span class="qb" onclick="quickSel('all')">全部</span>
+    <div class="date-select" id="dateSelect">
+        <div class="trigger" onclick="event.stopPropagation();document.getElementById('dateSelect').classList.toggle('open')"><span id="selLabel">全部</span> ▾</div>
+        <div class="dropdown" id="dateDropdown"></div>
+    </div>
+    <span class="qb" onclick="selDates=[];syncChecks();updateSelUI();doRender();" style="margin-left:auto;background:rgba(239,83,80,0.1);border-color:#ef5350;color:#ef5350">✕ 清除</span>
+    <span class="qb" onclick="location.reload(true)" style="background:rgba(79,195,247,0.1);border-color:#4fc3f7;color:#4fc3f7">🔄 刷新</span>
+</div>
+<div class="date-bar" id="dateBar">--</div>
+
+<!-- ====== WEATHER PANEL ====== -->
+<div class="panel active" id="panelWeather">
+<div class="metrics-row" id="wMetrics"></div>
+<div class="charts-grid">
+    <div class="chart-card"><h3 style="border-left-color:#4fc3f7">💨 加权1000m风速 m/s</h3><div class="chart-box tall" id="chWind"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ffb74d">☀️ 加权DNI W/m²</h3><div class="chart-box tall" id="chDNI"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ef5350">🌡 加权温度 °C</h3><div class="chart-box" id="chTemp"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#81c784">🌧 加权降水 mm</h3><div class="chart-box" id="chPrecip"></div></div>
+    <div class="chart-card wide"><h3 style="border-left-color:#ce93d8">📊 日汇总</h3><div style="max-height:280px;overflow:auto"><table class="summary-table" id="wTable"></table></div></div>
+    <div class="chart-card wide"><h3 style="border-left-color:#ffab00">🌬 汝城1000m风速</h3><div class="chart-box tall" id="chRucheng"></div></div>
+</div>
+</div>
+
+<!-- ====== MARKET PANEL ====== -->
+<div class="panel" id="panelMarket">
+<div class="metrics-row" id="mMetrics"></div>
+<div class="charts-grid">
+    <div class="chart-card wide"><h3 style="border-left-color:#ffb74d">💰 日前电价 + 出清电力</h3><div class="chart-box tall" id="chPrice"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#66bb6a">🌬 风电出力 & 供给率</h3><div class="chart-box tall" id="chWindM"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ffb74d">☀️ 光伏出力 & 供给率</h3><div class="chart-box tall" id="chSolarM"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#42a5f5">💧 水电出力 & 供给率</h3><div class="chart-box tall" id="chHydroM"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#4fc3f7">🔌 省间电 & 省间占比</h3><div class="chart-box tall" id="chInterM"></div></div>
+            <div class="chart-card wide"><h3 style="border-left-color:#ff7043">⚡ 日前负荷</h3><div class="chart-box tall" id="chLoadM"></div></div>
+    <div class="chart-card wide"><h3 style="border-left-color:#ce93d8">📐 出清价格 & 综合供给率 & 水电供给率</h3><div class="chart-box tall" id="chSupplyM"></div></div>
+    <div class="chart-card wide"><h3 style="border-left-color:#81c784">🌧 日均降水量(天气) & 日均水电供给率(市场)</h3><div class="chart-box tall" id="chRainHydro"></div></div>
+    <div class="chart-card wide"><h3 style="border-left-color:#ffab00">📋 日汇总</h3><div style="max-height:300px;overflow:auto"><table class="summary-table" id="mTable"></table></div></div>
+</div>
+</div>
+
+<!-- ====== HYDRO PANEL ====== -->
+<div class="panel" id="panelHydro">
+<div style="padding:6px 28px 0;display:flex;gap:8px" id="hModeBar">
+    <span class="qb" id="hmRealBtn" style="background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7" onclick="switchHydroMode('real')">📸 实时</span>
+    <span class="qb" id="hmCmpBtn" onclick="switchHydroMode('cmp')">📈 对比</span>
+    <span style="font-size:10px;color:#546e7a;margin-left:8px;align-self:center" id="hHistoryHint"></span>
+</div>
+<div class="metrics-row" id="hMetrics"></div>
+<div class="charts-grid" id="hChartsGrid">
+    <div class="chart-card wide" id="hAnalysisCard"><h3 style="border-left-color:#ff7043" id="hAnalysisTitle">📋 实时分析</h3><div id="hAnalysis" style="font-size:13px;line-height:1.9;color:#b0bec5"></div></div>
+    <div class="chart-card" id="hLevelCard"><h3 style="border-left-color:#4fc3f7" id="hLevelTitle">📊 五大水库水位 (m)</h3><div class="chart-box" id="chRsvrLevel"></div><div id="chCmpRzGrid" style="display:none"></div></div>
+    <div class="chart-card" id="hFlowCard"><h3 style="border-left-color:#ff8a65" id="hFlowTitle">📈 出入库流量 (m³/s)</h3><div class="chart-box" id="chRsvrFlow"></div></div>
+    <div class="chart-card" id="hNetCard" style="display:none"><h3 style="border-left-color:#81c784">⚖️ 净蓄水速率 (m³/s)</h3><div class="chart-box" id="chNetFlow"></div></div>
+    <div class="chart-card wide" id="hFloodCard" style="display:none"><h3 style="border-left-color:#ef5350">⏱ 超汛限天数统计</h3><div style="max-height:220px;overflow:auto"><table class="summary-table" id="hFloodTable"></table></div></div>
+    <div class="chart-card wide" id="hRiverCard"><h3 style="border-left-color:#66bb6a">🌊 流域控制站 比警戒水位 (m)</h3><div class="chart-box tall" id="chRiverBJJ"></div></div>
+    <div class="chart-card wide" id="hTableCard"><h3 style="border-left-color:#ce93d8">📍 河道控制站详情</h3>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap" id="hBasinTabs"></div>
+        <div style="max-height:360px;overflow:auto"><table class="summary-table" id="hTable"></table></div>
+    </div>
+</div>
+</div>
+
+<!-- ====== PREDICT PANEL ====== -->
+<div class="panel" id="panelPredict">
+<div class="charts-grid">
+    <div class="chart-card"><h3 style="border-left-color:#4fc3f7" id="pWindTitle">🌬️ 风电 · 24h</h3><div class="chart-box" id="chPWind"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ffb74d" id="pSolarTitle">☀️ 光伏 · 24h</h3><div class="chart-box" id="chPSolar"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#42a5f5" id="pHydroTitle">💧 水电 · 24h</h3><div class="chart-box" id="chPHydro"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ef5350" id="pLoadTitle">⚡ 负荷 · 24h</h3><div class="chart-box" id="chPLoad"></div></div>
+    <div class="chart-card wide"><h3>📋 24时段预测明细</h3>
+        <div style="max-height:420px;overflow:auto"><table class="summary-table"><thead><tr><th>时</th><th>风速</th><th style="color:#4fc3f7">风电 MW</th><th>DNI</th><th style="color:#ffb74d">光伏 MW</th><th style="color:#42a5f5">水电 MW</th><th style="color:#ef5350">负荷 MW</th><th>温度</th></tr></thead><tbody id="pTable"></tbody></table></div>
+    </div>
+</div>
+</div>
+
+<!-- ====== SR COMPARE PANEL ====== -->
+<div class="panel" id="panelSR">
+<div class="charts-grid">
+    <div class="chart-card wide"><h3 style="border-left-color:#ce93d8">📐 综合供给率对比 · 24h</h3><div class="chart-box tall" id="chSRcmp"></div></div>
+    <div class="chart-card wide"><h3>📋 供给率对比表 (%)</h3>
+        <div style="max-height:400px;overflow:auto"><table class="summary-table" id="srTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+</div>
+</div>
+
+<!-- ====== SPOT PANEL ====== -->
+<div class="panel" id="panelSpot">
+<div class="charts-grid">
+    <div class="chart-card"><h3 style="border-left-color:#ce93d8" id="spSRTitle">📐 综合供给率 (风+光+水)/负荷 · 24h</h3><div class="chart-box" id="chSPsr"></div></div>
+    <div class="chart-card"><h3 style="border-left-color:#ff7043" id="spPriceTitle">💰 现货出清价格 · 24h</h3><div class="chart-box" id="chSPprice"></div></div>
+    <div class="chart-card wide"><h3>📋 24时段现货预测明细</h3>
+        <div style="max-height:420px;overflow:auto"><table class="summary-table"><thead><tr><th>时</th><th style="color:#ce93d8">供给率</th><th style="color:#ff7043">V1价格</th><th>V1 >400</th><th>V1 零价</th><th style="color:#ffab00">V2价格</th><th>V2 >400</th><th>V2 零价</th></tr></thead><tbody id="spTable"></tbody></table></div>
+    </div>
+</div>
+</div>
+
+<div class="footer">数据源: Open-Meteo ERA5 + ECMWF IFS | 湖南14市加权 | 24点现货日前市场 | 湖南水文一张图</div>
+
+<script>
+// ===== GLOBALS =====
+var WD=null, MD=null, HD=null, HH=null, selDates=[], curTab='weather', hMode='real';
+try{WD=window.HUNAN_WEATHER_DATA;}catch(e){}
+try{MD=window.HUNAN_MARKET_DATA;}catch(e){}
+try{HD=window.HUNAN_HYDRO_DATA;}catch(e){}
+try{HH=window.HUNAN_HYDRO_HISTORY;}catch(e){}
+
+// Status display
+function status(msg,isErr){
+    if(isErr){document.getElementById('err').style.display='block';document.getElementById('err').textContent='⚠ '+msg;}
+    else{document.getElementById('info').textContent='✓ '+msg;}
+}
+// Show what we have
+var st=[];
+if(WD&&WD.hourly){st.push('天气:'+WD.hourly.length+'h');}
+else{st.push('天气:未加载');}
+if(MD&&MD.hourly){st.push('市场:'+MD.hourly.length+'h');}
+else{st.push('市场:未加载');}
+if(HD&&HD.reservoirs){st.push('水电:'+Object.keys(HD.reservoirs).length+'库');}
+else{st.push('水电:未加载');}
+document.getElementById('topInfo').textContent=st.join(' | ');
+if(!WD&&!MD){status('数据文件加载失败！请检查 hunan_weather_data.js 和 hunan_market_data.js',true);}
+
+// ===== TAB SWITCH =====
+function switchTab(tab){
+    curTab=tab;
+    document.querySelectorAll('.tab').forEach(function(t,i){
+        t.classList.toggle('active',(i===0&&tab==='weather')||(i===1&&tab==='market')||(i===2&&tab==='hydro')||(i===3&&tab==='predict')||(i===4&&tab==='spot')||(i===5&&tab==='sr'));
+    });
+    document.querySelectorAll('.panel').forEach(function(p){
+        p.classList.toggle('active',p.id==='panelWeather'&&tab==='weather'||p.id==='panelMarket'&&tab==='market'||p.id==='panelHydro'&&tab==='hydro'||p.id==='panelPredict'&&tab==='predict'||p.id==='panelSpot'&&tab==='spot'||p.id==='panelSR'&&tab==='sr');
+    });
+    doRender();
+}
+
+// ===== DATE UTILS =====
+function allDates(){
+    var d=[],s={};
+    function add(src){if(src&&src.hourly)src.hourly.forEach(function(r){var dt=r.time.slice(0,10);if(!s[dt]){s[dt]=1;d.push(dt);}});}
+    add(WD);add(MD);
+    return d.sort();
+}
+function filterW(){if(!WD||!WD.hourly||selDates.length===0)return[];return WD.hourly.filter(function(d){return selDates.indexOf(d.time.slice(0,10))>=0;});}
+function filterWD(){if(!WD||!WD.daily||selDates.length===0)return[];return WD.daily.filter(function(d){return selDates.indexOf(d.date)>=0;});}
+function filterM(){if(!MD||!MD.hourly||selDates.length===0)return[];return MD.hourly.filter(function(d){return selDates.indexOf(d.time.slice(0,10))>=0;});}
+function filterMD(){if(!MD||!MD.daily||selDates.length===0)return[];return MD.daily.filter(function(d){return selDates.indexOf(d.date)>=0;});}
+function filterRC(){
+    if(!WD||!WD.rucheng_hourly||selDates.length===0)return[];
+    var s={};selDates.forEach(function(d){s[d]=1;});
+    return WD.rucheng_hourly.filter(function(d){return s[d.time.slice(0,10)];});
+}
+
+function updateSelUI(){
+    var n=selDates.length;
+    document.getElementById('selLabel').textContent=n>0?'已选 '+n+' 天':'全部';
+    if(n>0){
+        document.getElementById('dateBar').innerHTML='📅 <b>'+selDates[0]+'</b> — <b>'+selDates[n-1]+'</b> <span style="background:rgba(79,195,247,0.12);padding:2px 8px;border-radius:8px;font-size:11px">'+n+'天</span>';
+    }else{
+        document.getElementById('dateBar').innerHTML='📅 请选择日期查看数据';
+    }
+    // Keep dropdown open during multi-select (closed by outside-click or trigger toggle)
+}
+
+function buildDropdowns(){
+    var dates=allDates();
+    var today=(new Date()).toISOString().slice(0,10);
+    var hist=dates.filter(function(d){return d<=today;});
+    var fcst=dates.filter(function(d){return d>today;});
+    var h='<div style="display:flex;gap:6px;padding:3px 8px 6px"><span class="qb" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();selAll();">全选</span><span class="qb" style="font-size:10px;padding:3px 8px;background:rgba(239,83,80,0.08);border-color:rgba(239,83,80,0.2);color:#ef5350" onclick="event.stopPropagation();selDates=[];syncChecks();updateSelUI();doRender();">清除</span></div>';
+    h+='<div class="group-label">实况 ('+hist.length+'天)</div>';
+    hist.slice(-30).forEach(function(d){h+='<label><input type="checkbox" value="'+d+'" onchange="onDropChange()"> '+d+' <span class="tag-his">实</span></label>';});
+    h+='<div class="group-label">预测 ('+fcst.length+'天)</div>';
+    fcst.forEach(function(d){h+='<label><input type="checkbox" value="'+d+'" onchange="onDropChange()"> '+d+' <span class="tag-fc">预</span></label>';});
+    document.getElementById('dateDropdown').innerHTML=h;
+}
+function onDropChange(){
+    var cbs=document.querySelectorAll('#dateDropdown input[type=checkbox]:checked');
+    selDates=[];cbs.forEach(function(cb){selDates.push(cb.value);});selDates.sort();
+    updateSelUI();doRender();
+}
+function syncChecks(){
+    var cbs=document.querySelectorAll('#dateDropdown input[type=checkbox]');
+    cbs.forEach(function(cb){cb.checked=selDates.indexOf(cb.value)>=0;});
+}
+function selAll(){selDates=allDates();updateSelUI();syncChecks();doRender();}
+function quickSel(type){
+    var dates=allDates(),today=(new Date()).toISOString().slice(0,10);
+    if(type==='history'){selDates=dates.filter(function(d){return d<=today;}).slice(-14);}
+    else if(type==='forecast'){selDates=dates.filter(function(d){return d>today;}).slice(0,7);}
+    else if(type==='default'){
+        var h14=dates.filter(function(d){return d<=today;}).slice(-14);
+        var f7=dates.filter(function(d){return d>today;}).slice(0,7);
+        selDates=h14.concat(f7);
+    }else{selDates=dates.slice();}
+    updateSelUI();syncChecks();doRender();
+}
+
+// ===== CHART HELPERS =====
+function hasE(){return typeof echarts!=='undefined';}
+function eGrad(c1,c2){return hasE()?new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:c1},{offset:1,color:c2}]):null;}
+
+function spHT(data,field){
+    var h=[],f=[],today=(new Date()).toISOString().slice(0,10);
+    data.forEach(function(d){
+        if(d.time.slice(0,10)<=today){h.push(d[field]);}else{f.push(d[field]);}
+    });
+    return{h:h,f:f};
+}
+
+function mkChart(id,option){
+    if(!hasE())return;
+    try{
+        var el=document.getElementById(id);if(!el)return;
+        var c=echarts.getInstanceByDom(el)||echarts.init(el);
+        c.setOption(option,true);return c;
+    }catch(e){status('Chart '+id+': '+e.message,true);}
+}
+
+function baseOpt(times,accent){
+    return{
+        tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:accent||'#4fc3f7',textStyle:{color:'#b0bec5',fontSize:11}},
+        grid:{left:50,right:18,top:16,bottom:26},
+        xAxis:{type:'category',data:times,axisLabel:{color:'#546e7a',fontSize:9,rotate:45,interval:Math.max(1,Math.floor(times.length/14))}},
+        yAxis:{type:'value',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}}
+    };
+}
+
+// ===== RENDER WEATHER =====
+function renderWeather(){
+    var data=filterW();
+    var daily=filterWD();
+
+    // Metrics
+    var h='';
+    if(data.length>0){
+        var ws=[],dn=[],tp=[],pp=0;
+        data.forEach(function(d){if(d.wind!=null)ws.push(d.wind);if(d.dni!=null)dn.push(d.dni);if(d.temp!=null)tp.push(d.temp);pp+=d.precip||0;});
+        function avg(a){return a.length?a.reduce(function(x,y){return x+y;})/a.length:0;}
+        if(ws.length)h+='<div class="metric"><div class="m-label">1000m风速均值</div><div class="m-value c-w">'+avg(ws).toFixed(2)+'</div><div class="m-sub">'+Math.min.apply(null,ws).toFixed(1)+' ~ '+Math.max.apply(null,ws).toFixed(1)+' m/s</div></div>';
+        if(dn.length)h+='<div class="metric"><div class="m-label">DNI均值</div><div class="m-value c-d">'+avg(dn).toFixed(0)+'</div><div class="m-sub">峰值 '+Math.max.apply(null,dn).toFixed(0)+' W/m²</div></div>';
+        if(tp.length)h+='<div class="metric"><div class="m-label">温度均值</div><div class="m-value c-t">'+avg(tp).toFixed(1)+'</div><div class="m-sub">'+Math.min.apply(null,tp).toFixed(1)+' ~ '+Math.max.apply(null,tp).toFixed(1)+' °C</div></div>';
+        h+='<div class="metric"><div class="m-label">降水累计</div><div class="m-value c-p">'+pp.toFixed(0)+'</div><div class="m-sub">共'+data.length+'条</div></div>';
+        var rc=filterRC(),rcW=[];
+        if(rc.length)rc.forEach(function(d){if(d.wind!=null)rcW.push(d.wind);});
+        if(rcW.length)h+='<div class="metric"><div class="m-label">汝城1000m风速</div><div class="m-value c-o">'+avg(rcW).toFixed(2)+'</div><div class="m-sub">'+Math.min.apply(null,rcW).toFixed(1)+' ~ '+Math.max.apply(null,rcW).toFixed(1)+' m/s</div></div>';
+    }
+    document.getElementById('wMetrics').innerHTML=h||'<div style="color:#546e7a;padding:20px">请选择日期</div>';
+
+    // Charts
+    if(data.length===0){
+        ['chWind','chDNI','chTemp','chPrecip','chRucheng'].forEach(function(id){var el=document.getElementById(id);if(el&&hasE()){var c=echarts.getInstanceByDom(el);if(c)c.dispose();}});
+        document.getElementById('wTable').innerHTML='';
+        return;
+    }
+    var times=data.map(function(d){return d.time.slice(5,16);});
+
+    var sw=spHT(data,'wind');
+    var opt=baseOpt(times,'#4fc3f7');
+    opt.series=[
+        {name:'实况',type:'line',data:sw.h,lineStyle:{color:'#4fc3f7',width:2},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(79,195,247,0.25)','rgba(79,195,247,0)')}},
+        {name:'预测',type:'line',data:sw.f,lineStyle:{color:'#0288d1',width:2,type:'dashed'},symbol:'none',smooth:true}
+    ];
+    mkChart('chWind',opt);
+
+    var sd=spHT(data,'dni');
+    opt=baseOpt(times,'#ff9800');
+    opt.series=[
+        {name:'实况',type:'line',data:sd.h,lineStyle:{color:'#ff9800',width:2},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(255,152,0,0.25)','rgba(255,152,0,0)')}},
+        {name:'预测',type:'line',data:sd.f,lineStyle:{color:'#e65100',width:2,type:'dashed'},symbol:'none',smooth:true}
+    ];
+    mkChart('chDNI',opt);
+
+    var st_=spHT(data,'temp');
+    opt=baseOpt(times,'#ef5350');
+    opt.series=[
+        {name:'实况',type:'line',data:st_.h,lineStyle:{color:'#ef5350',width:2},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(239,83,80,0.25)','rgba(239,83,80,0)')}},
+        {name:'预测',type:'line',data:st_.f,lineStyle:{color:'#b71c1c',width:2,type:'dashed'},symbol:'none',smooth:true}
+    ];
+    mkChart('chTemp',opt);
+
+    var sp=spHT(data,'precip');
+    opt=baseOpt(times,'#81c784');
+    opt.series=[
+        {name:'实况',type:'bar',data:sp.h,itemStyle:{color:eGrad('#81c784','#2e7d32'),borderRadius:[3,3,0,0]},barMaxWidth:6},
+        {name:'预测',type:'bar',data:sp.f,itemStyle:{color:eGrad('#ce93d8','#7b1fa2'),borderRadius:[3,3,0,0]},barMaxWidth:6}
+    ];
+    mkChart('chPrecip',opt);
+
+    // Rucheng
+    var rcData=filterRC();
+    if(rcData.length>0){
+        var rcTimes=rcData.map(function(d){return d.time.slice(5,16);});
+        var rcW_=spHT(rcData,'wind');
+        opt=baseOpt(rcTimes,'#ffab00');
+        opt.series=[
+            {name:'实况',type:'line',data:rcW_.h,lineStyle:{color:'#ffab00',width:2},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(255,171,0,0.25)','rgba(255,171,0,0)')}},
+            {name:'预测',type:'line',data:rcW_.f,lineStyle:{color:'#e65100',width:2,type:'dashed'},symbol:'none',smooth:true}
+        ];
+        mkChart('chRucheng',opt);
+    }
+
+    // Weather table
+    if(daily.length>0){
+        var rcMap={};
+        if(WD&&WD.rucheng_daily)WD.rucheng_daily.forEach(function(d){rcMap[d.date]=d;});
+        var t='<thead><tr><th>日期</th><th>风速均</th><th>风速峰</th><th>DNI均</th><th>DNI峰</th><th>DNI累</th><th>降水</th><th>均温</th><th>高温</th><th>低温</th><th style="color:#ffab00">汝城均速</th><th style="color:#ffab00">汝城峰速</th></tr></thead><tbody>';
+        daily.forEach(function(d){
+            var rc=rcMap[d.date];
+            t+='<tr><td>'+d.date+'</td><td class="c-w">'+(d.ws1000m_avg!=null?Number(d.ws1000m_avg).toFixed(2):'-')+'</td><td class="c-w">'+(d.ws1000m_max!=null?Number(d.ws1000m_max).toFixed(2):'-')+'</td><td class="c-d">'+(d.dni_avg!=null?Number(d.dni_avg).toFixed(0):'-')+'</td><td class="c-d">'+(d.dni_max!=null?Number(d.dni_max).toFixed(0):'-')+'</td><td class="c-d">'+d.dni_sum+'</td><td class="c-p">'+(d.precip_sum!=null?Number(d.precip_sum).toFixed(1):'-')+'</td><td class="c-t">'+(d.temp_avg!=null?Number(d.temp_avg).toFixed(1):'-')+'</td><td class="c-t">'+(d.temp_max!=null?Number(d.temp_max).toFixed(1):'-')+'</td><td>'+(d.temp_min!=null?Number(d.temp_min).toFixed(1):'-')+'</td><td style="color:#ffab00">'+(rc&&rc.ws1000m_avg!=null?Number(rc.ws1000m_avg).toFixed(2):'-')+'</td><td style="color:#ffab00">'+(rc&&rc.ws1000m_max!=null?Number(rc.ws1000m_max).toFixed(2):'-')+'</td></tr>';
+        });
+        t+='</tbody>';
+        document.getElementById('wTable').innerHTML=t;
+    }
+}
+
+// ===== RENDER MARKET =====
+function renderMarket(){
+    var data=filterM();
+    var daily=filterMD();
+
+    // Helper: calc ratio
+    function ratio(a,b){return b&&b!==0?a/b:null;}
+
+    // Metrics
+    var h='';
+    if(data.length>0){
+        function avg(a){return a.length?a.reduce(function(x,y){return x+y;})/a.length:0;}
+        function mm(a){return a.length?[Math.min.apply(null,a),Math.max.apply(null,a)]:[0,0];}
+        var ps=data.map(function(d){return d.ps;}).filter(function(v){return v!=null;});
+        var ld=data.map(function(d){return d.ld;}).filter(function(v){return v!=null;});
+        var wd=data.map(function(d){return d.wd;}).filter(function(v){return v!=null;});
+        var sn=data.map(function(d){return d.sn;}).filter(function(v){return v!=null;});
+        var hy=data.map(function(d){return d.hy;}).filter(function(v){return v!=null;});
+        var sr=data.map(function(d){return d.sr;}).filter(function(v){return v!=null;});
+
+        if(ps.length){var m=mm(ps);h+='<div class="metric"><div class="m-label">统一结算价 均</div><div class="m-value c-o">'+avg(ps).toFixed(0)+'</div><div class="m-sub">'+m[0].toFixed(0)+' ~ '+m[1].toFixed(0)+' 元/MWh</div></div>';}
+        if(ld.length){var m=mm(ld);h+='<div class="metric"><div class="m-label">日前负荷 均</div><div class="m-value c-w">'+(avg(ld)/1e4).toFixed(1)+'万</div><div class="m-sub">'+(m[0]/1e4).toFixed(1)+'~'+(m[1]/1e4).toFixed(1)+' MW</div></div>';}
+        if(wd.length){h+='<div class="metric"><div class="m-label">风电 均</div><div class="m-value c-g">'+avg(wd).toFixed(0)+'</div><div class="m-sub">'+mm(wd)[0].toFixed(0)+' ~ '+mm(wd)[1].toFixed(0)+' MW</div></div>';}
+        if(sn.length){h+='<div class="metric"><div class="m-label">光伏 均</div><div class="m-value c-d">'+avg(sn).toFixed(0)+'</div><div class="m-sub">'+mm(sn)[0].toFixed(0)+' ~ '+mm(sn)[1].toFixed(0)+' MW</div></div>';}
+        if(hy.length){h+='<div class="metric"><div class="m-label">水电 均</div><div class="m-value c-b">'+avg(hy).toFixed(0)+'</div><div class="m-sub">'+mm(hy)[0].toFixed(0)+' ~ '+mm(hy)[1].toFixed(0)+' MW</div></div>';}
+        if(sr.length){h+='<div class="metric"><div class="m-label">供给率 均</div><div class="m-value c-m">'+(avg(sr)*100).toFixed(1)+'%</div><div class="m-sub">'+(mm(sr)[0]*100).toFixed(1)+'%~'+(mm(sr)[1]*100).toFixed(1)+'%</div></div>';}
+    }
+    document.getElementById('mMetrics').innerHTML=h||'<div style="color:#546e7a;padding:20px">请选择日期</div>';
+
+    // Charts
+    if(data.length===0){
+        ['chPrice','chWindM','chSolarM','chHydroM','chInterM','chLoadM','chSupplyM','chRainHydro'].forEach(function(id){var el=document.getElementById(id);if(el&&hasE()){var c=echarts.getInstanceByDom(el);if(c)c.dispose();}});
+        document.getElementById('mTable').innerHTML='';
+        return;
+    }
+    var times=data.map(function(d){return d.time.slice(5,16);});
+
+    // ---- Helper: dual-axis chart (left: MW, right: %) ----
+    function mkDualChart(id,accent,seriesLeft,seriesRight){
+        var opt=baseOpt(times,accent);
+        opt.grid={left:55,right:55,top:16,bottom:36};
+        opt.legend={bottom:0,textStyle:{color:'#78909c',fontSize:10}};
+        opt.yAxis=[
+            {type:'value',name:'MW',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+            {type:'value',name:'%',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{show:false}}
+        ];
+        opt.series=[];
+        seriesLeft.forEach(function(s){s.yAxisIndex=0;opt.series.push(s);});
+        seriesRight.forEach(function(s){s.yAxisIndex=1;opt.series.push(s);});
+        mkChart(id,opt);
+    }
+
+    // ---- Price chart (full width, dual Y) ----
+    var opt=baseOpt(times,'#ffb74d');
+    opt.grid={left:55,right:55,top:16,bottom:36};
+    opt.legend={data:['统一结算价','出清价格','出清电力'],bottom:0,textStyle:{color:'#78909c',fontSize:10}};
+    opt.yAxis=[
+        {type:'value',name:'元/MWh',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+        {type:'value',name:'MW',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{show:false}}
+    ];
+    opt.series=[
+        {name:'统一结算价',type:'line',data:data.map(function(d){return d.ps;}),lineStyle:{color:'#ffb74d',width:2.5},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(255,183,77,0.2)','rgba(255,183,77,0)')}},
+        {name:'出清价格',type:'line',data:data.map(function(d){return d.pc;}),lineStyle:{color:'#e040fb',width:2},symbol:'none',smooth:true},
+        {name:'出清电力',type:'bar',yAxisIndex:1,data:data.map(function(d){return d.pq;}),itemStyle:{color:'rgba(79,195,247,0.3)'},barMaxWidth:8}
+    ];
+    mkChart('chPrice',opt);
+
+    // Round helper
+    function r2(v){return v!=null?parseFloat(v.toFixed(2)):null;}
+
+    // ---- Row 1: Wind | Solar ----
+    mkDualChart('chWindM','#66bb6a',
+        [{name:'风电出力',type:'bar',data:data.map(function(d){return d.wd;}),itemStyle:{color:eGrad('#66bb6a','#2e7d32'),borderRadius:[2,2,0,0]},barMaxWidth:8}],
+        [{name:'风电供给率',type:'line',data:data.map(function(d){var r=ratio(d.wd,d.ld);return r?r2(r*100):null;}),lineStyle:{color:'#ffb74d',width:2},symbol:'none',smooth:true}]
+    );
+    mkDualChart('chSolarM','#ffb74d',
+        [{name:'光伏出力',type:'bar',data:data.map(function(d){return d.sn;}),itemStyle:{color:eGrad('#ffb74d','#e65100'),borderRadius:[2,2,0,0]},barMaxWidth:8}],
+        [{name:'光伏供给率',type:'line',data:data.map(function(d){var r=ratio(d.sn,d.ld);return r?r2(r*100):null;}),lineStyle:{color:'#ce93d8',width:2},symbol:'none',smooth:true}]
+    );
+
+    // ---- Row 2: Hydro | Inter-Prov ----
+    mkDualChart('chHydroM','#42a5f5',
+        [{name:'水电出力',type:'bar',data:data.map(function(d){return d.hy;}),itemStyle:{color:eGrad('#42a5f5','#1565c0'),borderRadius:[2,2,0,0]},barMaxWidth:8}],
+        [{name:'水电供给率',type:'line',data:data.map(function(d){var r=ratio(d.hy,d.ld);return r?r2(r*100):null;}),lineStyle:{color:'#ef5350',width:2},symbol:'none',smooth:true}]
+    );
+    mkDualChart('chInterM','#4fc3f7',
+        [{name:'省间计划电',type:'bar',data:data.map(function(d){return d.ip;}),itemStyle:{color:eGrad('#4fc3f7','#01579b'),borderRadius:[2,2,0,0]},barMaxWidth:8}],
+        [{name:'省间占比',type:'line',data:data.map(function(d){var r=ratio(d.ip,d.ld);return r?r2(r*100):null;}),lineStyle:{color:'#ffab00',width:2},symbol:'none',smooth:true}]
+    );
+
+    // ---- Row 3 (full width): 日前负荷 ----
+    (function(){
+        var opt=baseOpt(times,'#ef9a9a');
+        opt.grid={left:55,right:55,top:16,bottom:36};
+        opt.legend={data:['日前负荷'],bottom:0,textStyle:{color:'#78909c',fontSize:10}};
+        opt.yAxis={type:'value',name:'MW',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}};
+        opt.series=[
+            {name:'日前负荷',type:'line',data:data.map(function(d){return d.ld;}),lineStyle:{color:'#ef9a9a',width:2.5},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(239,154,154,0.2)','rgba(239,154,154,0)')}}
+        ];
+        mkChart('chLoadM',opt);
+    })();
+
+    // ---- Row 4 (full width): 出清价格 + 综合供给率 + 水电供给率 ----
+    opt=baseOpt(times,'#ce93d8');
+    opt.grid={left:55,right:55,top:16,bottom:36};
+    opt.legend={data:['出清价格','综合供给率(水风光)','水电供给率'],bottom:0,textStyle:{color:'#78909c',fontSize:10}};
+    opt.yAxis=[
+        {type:'value',name:'元/MWh',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+        {type:'value',name:'%',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{show:false}}
+    ];
+    opt.series=[
+        {name:'出清价格',type:'line',data:data.map(function(d){return r2(d.pc);}),lineStyle:{color:'#e040fb',width:2},symbol:'none',smooth:true},
+        {name:'综合供给率(水风光)',type:'line',yAxisIndex:1,data:data.map(function(d){return d.sr?r2(d.sr*100):null;}),lineStyle:{color:'#66bb6a',width:2},symbol:'none',smooth:true,areaStyle:{color:eGrad('rgba(102,187,106,0.15)','rgba(102,187,106,0)')}},
+        {name:'水电供给率',type:'line',yAxisIndex:1,data:data.map(function(d){var r=ratio(d.hy,d.ld);return r?r2(r*100):null;}),lineStyle:{color:'#42a5f5',width:2},symbol:'none',smooth:true}
+    ];
+    mkChart('chSupplyM',opt);
+
+    // ---- Row 4 (full width): 日均降水量(天气) + 日均水电供给率(市场) ----
+    (function(){
+        var wDaily=filterWD();
+        var mDaily=filterMD();
+        if(wDaily.length===0||mDaily.length===0)return;
+        var precipByDate={};
+        wDaily.forEach(function(d){precipByDate[d.date]=d.precip_sum;});
+        var hydroRByDate={};
+        mDaily.forEach(function(d){hydroRByDate[d.date]=d.hr_avg;});
+        var dates=[], precipVals=[], hydroRVals=[];
+        mDaily.forEach(function(d){
+            var dt=d.date;
+            if(precipByDate[dt]!=null){
+                dates.push(dt);
+                precipVals.push(r2(precipByDate[dt]));
+                hydroRVals.push(r2(hydroRByDate[dt]*100));
+            }
+        });
+        if(dates.length===0)return;
+        var opt=baseOpt(dates,'#81c784');
+        opt.grid={left:55,right:55,top:16,bottom:36};
+        opt.legend={data:['日均降水量(mm)','日均水电供给率(%)'],bottom:0,textStyle:{color:'#78909c',fontSize:10}};
+        opt.yAxis=[
+            {type:'value',name:'mm',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+            {type:'value',name:'%',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{show:false}}
+        ];
+        opt.series=[
+            {name:'日均降水量(mm)',type:'bar',data:precipVals,itemStyle:{color:eGrad('#81c784','#2e7d32'),borderRadius:[3,3,0,0]},barMaxWidth:14},
+            {name:'日均水电供给率(%)',type:'line',yAxisIndex:1,data:hydroRVals,lineStyle:{color:'#ef5350',width:2.5},symbol:'none',smooth:true}
+        ];
+        mkChart('chRainHydro',opt);
+    })();
+
+    // ---- Market table ----
+    if(daily.length>0){
+        var t='<thead><tr><th>日期</th><th>均价</th><th>最高</th><th>最低</th><th>负荷均</th><th>风电</th><th>风电%</th><th>光伏</th><th>光伏%</th><th>水电</th><th>水电%</th><th>总供给率</th><th>省间</th><th>省间%</th><th>阻塞</th></tr></thead><tbody>';
+        daily.forEach(function(d){
+            var pc=d.ps_avg>400?'color:#ef5350;font-weight:700':d.ps_avg<100?'color:#66bb6a':'';
+            var wr=(d.wr_avg!=null?(d.wr_avg*100).toFixed(2):'-');
+            var snr=(d.snr_avg!=null?(d.snr_avg*100).toFixed(2):'-');
+            var hr=(d.hr_avg!=null?(d.hr_avg*100).toFixed(2):'-');
+            var ipr=(d.ipr_avg!=null?(d.ipr_avg*100).toFixed(2):'-');
+            var srt=(d.sr_avg!=null?(d.sr_avg*100).toFixed(1):'-');
+            t+='<tr><td>'+d.date+'</td><td style="'+pc+'">'+d.ps_avg.toFixed(0)+'</td><td style="color:#ef5350">'+d.ps_max.toFixed(0)+'</td><td style="color:#66bb6a">'+d.ps_min.toFixed(0)+'</td><td>'+(d.ld_avg/1e4).toFixed(1)+'万</td><td style="color:#66bb6a">'+d.wd_avg.toFixed(0)+'</td><td style="color:#66bb6a">'+wr+'%</td><td style="color:#ffb74d">'+d.sn_avg.toFixed(0)+'</td><td style="color:#ffb74d">'+snr+'%</td><td style="color:#42a5f5">'+d.hy_avg.toFixed(0)+'</td><td style="color:#42a5f5">'+hr+'%</td><td>'+srt+'%</td><td>'+d.ip_avg.toFixed(0)+'</td><td style="color:#4fc3f7">'+ipr+'%</td><td>'+(d.cg_cnt||0)+'</td></tr>';
+        });
+        t+='</tbody>';
+        document.getElementById('mTable').innerHTML=t;
+    }
+}
+
+// ===== HYDRO MODE SWITCH =====
+function switchHydroMode(mode) {
+    hMode = mode;
+    document.getElementById('hmRealBtn').style.cssText = mode === 'real' ? 'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7' : '';
+    document.getElementById('hmCmpBtn').style.cssText = mode === 'cmp' ? 'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7' : '';
+    if (mode === 'cmp' && (!HH || !HH.snapshots || HH.snapshots.length < 2)) {
+        hMode = 'real';
+        document.getElementById('hmRealBtn').style.cssText = 'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7';
+        document.getElementById('hmCmpBtn').style.cssText = '';
+        status('对比模式需要至少2天历史数据，当前仅'+((HH&&HH.snapshots)?HH.snapshots.length:0)+'天。请多运行几次 hypower_fetch.py 累积数据', true);
+    }
+    renderHydro();
+}
+
+// ===== HYDRO RENDER =====
+var hBasin='';
+function renderHydro(){
+    if(!HD||!HD.reservoirs){status('水电数据未加载',true);return;}
+    // Show/hide mode-specific chart cards
+    var isCmp = (hMode==='cmp' && HH && HH.snapshots && HH.snapshots.length>=2);
+    document.getElementById('hAnalysisCard').style.display = isCmp ? 'none' : '';
+    // Water level card: wide in cmp mode (5 charts need full row), side-by-side in real mode
+    var lvlCard=document.getElementById('hLevelCard');
+    if(isCmp){lvlCard.classList.add('wide');}else{lvlCard.classList.remove('wide');}
+    document.getElementById('hLevelTitle').textContent = isCmp ? '📈 水位日环比 Δ + 均线 (m)' : '📊 五大水库水位 (m)';
+    document.getElementById('chRsvrLevel').style.display = isCmp ? 'none' : '';
+    document.getElementById('chCmpRzGrid').style.display = isCmp ? '' : 'none';
+    document.getElementById('hFlowTitle').textContent = isCmp ? '📈 出入库流量趋势 (m³/s)' : '📈 出入库流量 (m³/s)';
+    document.getElementById('hNetCard').style.display = isCmp ? '' : 'none';
+    document.getElementById('hFloodCard').style.display = isCmp ? '' : 'none';
+    document.getElementById('hHistoryHint').textContent = HH&&HH.snapshots ? '(历史:'+HH.snapshots.length+'天)' : '';
+    if(isCmp){renderHydroCompare();}else{renderHydroReal();}
+}
+function renderHydroReal(){
+    var hd=HD;
+    var order=['五强溪','凤滩','柘溪','东江','江垭'];
+    var cap={五强溪:1200,凤滩:815,柘溪:1040,东江:500,江垭:300};
+    var totalIn=0,totalOut=0,overCnt=0,storeTotal=0,storeOut=0,releaseTotal=0,releaseOut=0;
+    var details=[]; // per-reservoir detail for analysis
+    order.forEach(function(n){
+        var d=hd.reservoirs[n];if(!d)return;
+        var rz=parseFloat(d.rz)||0, fsl=parseFloat(d.fsltdz)||0, la=parseFloat(d.laz)||0;
+        var inq=d.inq?parseFloat(d.inq):0, otq=d.otq?parseFloat(d.otq):0;
+        totalIn+=inq;totalOut+=otq;
+        var net=inq-otq;
+        if(rz>fsl&&fsl>0)overCnt++;
+        var trend='';
+        if(net>500){trend='↑蓄水中';storeTotal++;storeOut+=otq;}
+        else if(net<-200){trend='↓放水中';releaseTotal++;releaseOut+=otq;}
+        else{trend='→平衡';}
+        details.push({name:n,rz:rz,fsl:fsl,la:la,inq:inq,otq:otq,net:net,trend:trend,capMW:cap[n],over:rz>fsl&&fsl>0,w:d.w,rzFmt:rz.toFixed(2)});
+    });
+    // Metrics
+    document.getElementById('hMetrics').innerHTML=
+        '<div class="metric"><div class="m-label">五大库总入库</div><div class="m-value c-w">'+(totalIn/1000).toFixed(1)+'k</div><div class="m-sub">m³/s</div></div>'+
+        '<div class="metric"><div class="m-label">五大库总出库</div><div class="m-value c-o">'+(totalOut/1000).toFixed(1)+'k</div><div class="m-sub">m³/s</div></div>'+
+        '<div class="metric"><div class="m-label">超汛限水库</div><div class="m-value c-t">'+overCnt+'/5</div><div class="m-sub">座</div></div>'+
+        '<div class="metric"><div class="m-label">蓄水水库</div><div class="m-value c-g">'+storeTotal+'座</div><div class="m-sub">出库'+storeOut.toFixed(0)+'m³/s</div></div>'+
+        '<div class="metric"><div class="m-label">放水水库</div><div class="m-value c-o">'+releaseTotal+'座</div><div class="m-sub">出库'+releaseOut.toFixed(0)+'m³/s</div></div>'+
+        '<div class="metric"><div class="m-label">数据时间</div><div class="m-value c-b">'+(hd.generated||'').slice(11,16)+'</div><div class="m-sub">更新</div></div>';
+
+    // === ANALYSIS ===
+    var a='';
+    // 1. Overall status
+    var overNames=[];details.forEach(function(d){if(d.over)overNames.push(d.name);});
+    if(overCnt>=3){
+        a+='<p>🔴 <b style="color:#ef5350">'+overCnt+'座水库超汛限（'+overNames.join('、')+'）</b> → 必须加大出库 → <b style="color:#ffab00">短期水电出力高位，现货电价承压下行</b></p>';
+    }else if(overCnt>=1){
+        a+='<p>🟡 <b style="color:#ffab00">'+overCnt+'座水库超汛限（'+overNames.join('、')+'）</b> → 需关注出库变化</p>';
+    }else{
+        a+='<p>🟢 <b style="color:#66bb6a">无水库超汛限</b> → 水电出力正常区间，调节空间充裕</p>';
+    }
+    // 2. Per reservoir detail
+    a+='<p style="margin-top:6px">';
+    details.forEach(function(d){
+        var icon=d.trend.indexOf('蓄')>=0?'🔵':d.trend.indexOf('放')>=0?'🟠':'⚪';
+        var pct='';if(d.rz>d.fsl&&d.fsl>0)pct=' <span style="color:#ef5350;font-size:11px">超汛限'+(d.rz-d.fsl).toFixed(1)+'m</span>';
+        else if(d.fsl>0)pct=' <span style="color:#78909c;font-size:11px">距汛限'+(d.fsl-d.rz).toFixed(1)+'m</span>';
+        a+=icon+' <b>'+d.name+'</b>('+d.capMW+'MW) 水位'+d.rzFmt+'m'+pct+' | 入'+d.inq.toFixed(0)+'/出'+d.otq.toFixed(0)+' | 净'+(d.net>=0?'+':'')+d.net.toFixed(0)+' | '+d.trend+'<br>';
+    });
+    a+='</p>';
+    // 3. Trend signal
+    var storeList=[],releaseList=[];
+    details.forEach(function(d){if(d.net>500)storeList.push(d.name);if(d.net<-200)releaseList.push(d.name);});
+    if(storeList.length>0){
+        a+='<p style="margin-top:6px">📈 <b style="color:#4fc3f7">蓄水信号</b>：'+storeList.join('、')+' 入库>出库，水位仍在上涨 → <b>未来几天出库将继续加大，水电出力有增量空间</b></p>';
+    }
+    if(releaseList.length>0){
+        a+='<p>📉 <b style="color:#ff8a65">放水信号</b>：'+releaseList.join('、')+' 出库>入库，已在全力发电排洪 → <b>当前接近该库出力峰值</b></p>';
+    }
+    // 4. Basin summary
+    var hasEastRiver=details.filter(function(d){return d.name==='东江';})[0];
+    if(hasEastRiver&&!hasEastRiver.over){
+        a+='<p>💡 <b style="color:#66bb6a">调节空间</b>：东江是唯一未超汛限的大型水库（距汛限'+(hasEastRiver.fsl-hasEastRiver.rz).toFixed(1)+'m），是后期调峰的关键变量</p>';
+    }
+    // 5. Total estimate
+    var estMW=0;details.forEach(function(d){estMW+=d.otq>0?d.capMW*0.85:0;}); // rough estimate: 85% of capacity if releasing
+    a+='<p style="margin-top:6px;color:#78909c;font-size:12px">⚡ 五大库总装机3,855MW | 当前出库合计'+totalOut.toFixed(0)+'m³/s | 凤滩/江垭已在放水高峰，五强溪/柘溪蓄水中后期有增量 | 总体判断：<b style="color:#ffab00">短期水电大发→电价偏低，未来3-5天维持此格局</b></p>';
+    document.getElementById('hAnalysis').innerHTML=a;
+
+    // Reservoir level chart — fix label overlap: bars inside, lines no labels
+    var names=[],zVals=[],fslVals=[],laVals=[];
+    order.forEach(function(n){var d=hd.reservoirs[n];if(!d)return;
+        names.push(n);zVals.push(parseFloat(d.rz)||null);
+        fslVals.push(parseFloat(d.fsltdz)||null);laVals.push(parseFloat(d.laz)||null);
+    });
+    mkChart('chRsvrLevel',{
+        tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#4fc3f7',textStyle:{color:'#b0bec5',fontSize:11}},
+        legend:{data:['当前水位','汛限水位','死水位'],textStyle:{color:'#78909c',fontSize:11},top:0},
+        grid:{left:50,right:60,top:35,bottom:30},
+        xAxis:{type:'category',data:names,axisLabel:{color:'#546e7a',fontSize:12},axisLine:{lineStyle:{color:'#1a2532'}}},
+        yAxis:{type:'value',name:'m',axisLabel:{color:'#546e7a',fontSize:11},splitLine:{lineStyle:{color:'#141c26'}}},
+        series:[
+            {name:'当前水位',type:'bar',barWidth:'40%',data:zVals,itemStyle:{color:function(p){var v=p.value;return v>fslVals[p.dataIndex]?'#ef5350':'#4fc3f7';}},label:{show:true,position:'insideTop',distance:5,color:'#fff',fontSize:11,fontWeight:'bold',formatter:'{c}'}},
+            {name:'汛限水位',type:'line',data:fslVals,lineStyle:{color:'#ffab00',type:'dashed',width:2},symbol:'diamond',symbolSize:8,itemStyle:{color:'#ffab00'},label:{show:false}},
+            {name:'死水位',type:'line',data:laVals,lineStyle:{color:'#546e7a',type:'dotted',width:1.5},symbol:'triangle',symbolSize:6,itemStyle:{color:'#546e7a'},label:{show:false}}
+        ]
+    });
+
+    // Flow chart
+    var inVals=[],outVals=[];
+    order.forEach(function(n){var d=hd.reservoirs[n];if(!d)return;
+        inVals.push(d.inq?parseFloat(d.inq):null);outVals.push(d.otq?parseFloat(d.otq):null);
+    });
+    mkChart('chRsvrFlow',{
+        tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#ff8a65',textStyle:{color:'#b0bec5',fontSize:11}},
+        legend:{data:['入库','出库'],textStyle:{color:'#78909c',fontSize:11},top:0},
+        grid:{left:55,right:30,top:35,bottom:30},
+        xAxis:{type:'category',data:names,axisLabel:{color:'#546e7a',fontSize:12},axisLine:{lineStyle:{color:'#1a2532'}}},
+        yAxis:{type:'value',name:'m³/s',axisLabel:{color:'#546e7a',fontSize:11},splitLine:{lineStyle:{color:'#141c26'}}},
+        series:[
+            {name:'入库',type:'bar',barWidth:'35%',data:inVals,itemStyle:{color:'#4fc3f7'},label:{show:true,position:'top',color:'#4fc3f7',fontSize:10,formatter:function(p){return p.value>1000?(p.value/1000).toFixed(1)+'k':p.value;}}},
+            {name:'出库',type:'bar',barWidth:'35%',data:outVals,itemStyle:{color:'#ff8a65'},label:{show:true,position:'top',color:'#ff8a65',fontSize:10,formatter:function(p){return p.value>1000?(p.value/1000).toFixed(1)+'k':p.value;}}}
+        ]
+    });
+
+    // River BJJ chart
+    var basins={};Object.values(hd.rivers).forEach(function(s){var b=s.hnnm||'其他';if(!basins[b])basins[b]=[];basins[b].push(s);});
+    var basinOrder=['湘江','资水','沅江','澧水','洞庭湖'];
+    var allNames=[],allBJJ=[],cls=[],pal={湘江:'#4fc3f7',资水:'#66bb6a',沅江:'#ff8a65',澧水:'#ba68c8',洞庭湖:'#ffd54f'};
+    basinOrder.forEach(function(b){(basins[b]||[]).forEach(function(s){allNames.push(s.name);allBJJ.push(s.bjj!=null?parseFloat(s.bjj):null);cls.push(pal[b]||'#78909c');});});
+    mkChart('chRiverBJJ',{
+        tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#66bb6a',textStyle:{color:'#b0bec5',fontSize:11},formatter:function(p){return p[0].name+'<br/>比警戒: '+p[0].value+'m';}},
+        grid:{left:55,right:30,top:10,bottom:60},
+        xAxis:{type:'category',data:allNames,axisLabel:{color:'#546e7a',fontSize:9,rotate:45},axisLine:{lineStyle:{color:'#1a2532'}}},
+        yAxis:{type:'value',name:'比警戒(m)',axisLabel:{color:'#546e7a',fontSize:11},splitLine:{lineStyle:{color:'#141c26'}}},
+        series:[{type:'bar',data:allBJJ.map(function(v,i){return{value:v,itemStyle:{color:cls[i]}};}),label:{show:true,position:'bottom',color:'#b0bec5',fontSize:9,formatter:'{c}'},markLine:{silent:true,data:[{yAxis:0,label:{formatter:'警戒线',fontSize:10,color:'#ef5350'},lineStyle:{color:'#ef5350',type:'dashed'}}]}}]
+    });
+
+    // Basin tabs + table
+    var bKeys=Object.keys(basins).sort();
+    var tabsHtml='<span class="qb" style="font-size:10px;padding:3px 8px;'+(hBasin===''?'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7':'')+'" onclick="hBasin=\x27\x27;renderHydro();">全部('+Object.keys(hd.rivers).length+')</span>';
+    bKeys.forEach(function(b){tabsHtml+='<span class="qb" style="font-size:10px;padding:3px 8px;'+(hBasin===b?'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7':'')+'" onclick="hBasin=\x27'+b+'\x27;renderHydro();">'+b+'('+(basins[b]||[]).length+')</span>';});
+    document.getElementById('hBasinTabs').innerHTML=tabsHtml;
+
+    var stns=Object.values(hd.rivers).filter(function(s){return !hBasin||(s.hnnm||'')===hBasin;});
+    stns.sort(function(a,b){return(parseFloat(a.bjj)||-99)-(parseFloat(b.bjj)||-99);});
+    var wpMap={4:'↓落',5:'↑涨',6:'→平'};
+    var t='<thead><tr><th>站名</th><th>流域</th><th>河流</th><th>水位(m)</th><th>流量</th><th>比警戒(m)</th><th>水势</th><th>时间</th></tr></thead><tbody>';
+    stns.forEach(function(s){
+        var bjj=parseFloat(s.bjj);var bjjC=bjj>0?'color:#ef5350;font-weight:bold':'';
+        t+='<tr><td>'+s.name+'</td><td>'+(s.hnnm||'')+'</td><td>'+(s.rvnm||'')+'</td><td>'+(s.z||'--')+'</td><td style="color:#4fc3f7">'+(s.q||'--')+'</td><td style="'+bjjC+'">'+(bjj?bjj.toFixed(2):'--')+'</td><td>'+((wpMap[s.wptn]||'--'))+'</td><td style="font-size:10px;color:#546e7a">'+(s.tm||'').slice(11,16)+'</td></tr>';
+    });
+    t+='</tbody>';
+    document.getElementById('hTable').innerHTML=t;
+}
+
+// ===== HYDRO COMPARISON RENDER =====
+function renderHydroCompare(){
+    var snaps=HH.snapshots;
+    var order=['五强溪','凤滩','柘溪','东江','江垭'];
+    var cap={五强溪:1200,凤滩:815,柘溪:1040,东江:500,江垭:300};
+    var totalDays=snaps.length;
+    var latest=snaps[totalDays-1];
+    var dates=snaps.map(function(s){return s.date;});
+
+    // Build per-reservoir data arrays
+    var rzData={},inqData={},otqData={},netData={},overDays={};
+    order.forEach(function(n){rzData[n]=[];inqData[n]=[];otqData[n]=[];netData[n]=[];overDays[n]=0;});
+    snaps.forEach(function(s){
+        order.forEach(function(n){
+            var r=s.reservoirs[n];
+            if(r){
+                var rz=parseFloat(r.rz)||null,inq=r.inq?parseFloat(r.inq):null,otq=r.otq?parseFloat(r.otq):null;
+                rzData[n].push(rz);inqData[n].push(inq);otqData[n].push(otq);
+                netData[n].push(inq!=null&&otq!=null?inq-otq:null);
+                if(rz!=null&&parseFloat(r.fsltdz)>0&&rz>parseFloat(r.fsltdz))overDays[n]++;
+            }else{rzData[n].push(null);inqData[n].push(null);otqData[n].push(null);netData[n].push(null);}
+        });
+    });
+
+    // Reference time from latest snapshot
+    var refTm='08:00';
+    for(var k=0;k<order.length;k++){var r0=latest.reservoirs[order[k]];if(r0&&r0.tm){refTm=r0.tm.slice(11,16);break;}}
+    var pal=['#4fc3f7','#ff8a65','#66bb6a','#ba68c8','#ffd54f'];
+
+    // === METRICS ===
+    var totalOver=0,nowIn=0,nowOut=0,prevIn=0,prevOut=0;
+    order.forEach(function(n){totalOver+=overDays[n];});
+    order.forEach(function(n){var r=latest.reservoirs[n];if(r){nowIn+=r.inq?parseFloat(r.inq):0;nowOut+=r.otq?parseFloat(r.otq):0;}});
+    if(totalDays>=2){var prev=snaps[totalDays-2];order.forEach(function(n){var r=prev.reservoirs[n];if(r){prevIn+=r.inq?parseFloat(r.inq):0;prevOut+=r.otq?parseFloat(r.otq):0;}});}
+    var dIn=nowIn-prevIn,dOut=nowOut-prevOut;
+    function delta(v){return v>0?'<span style="color:#ef5350">+'+v.toFixed(0)+'</span>':v<0?'<span style="color:#66bb6a">'+v.toFixed(0)+'</span>':'';}
+    document.getElementById('hMetrics').innerHTML=
+        '<div class="metric"><div class="m-label">对比天数</div><div class="m-value c-w">'+totalDays+'天</div><div class="m-sub">'+dates[0]+'~'+dates[totalDays-1]+'</div></div>'+
+        '<div class="metric"><div class="m-label">总入库('+refTm+')</div><div class="m-value c-w">'+(nowIn/1000).toFixed(1)+'k</div><div class="m-sub">'+delta(dIn)+' 较昨日</div></div>'+
+        '<div class="metric"><div class="m-label">总出库('+refTm+')</div><div class="m-value c-o">'+(nowOut/1000).toFixed(1)+'k</div><div class="m-sub">'+delta(dOut)+' 较昨日</div></div>'+
+        '<div class="metric"><div class="m-label">超汛限统计</div><div class="m-value c-t">'+totalOver+'次</div><div class="m-sub">近'+totalDays+'天累计</div></div>'+
+        '<div class="metric"><div class="m-label">模式</div><div class="m-value" style="font-size:14px;color:#4fc3f7">📈 对比</div><div class="m-sub">每日'+refTm+'同比</div></div>'+
+        '<div class="metric"><div class="m-label">数据时间</div><div class="m-value c-b">'+(HD.generated||'').slice(11,16)+'</div><div class="m-sub">更新</div></div>';
+
+    // === CHART 1: Per-Reservoir Water Level Daily Change + MA (replace chRsvrLevel) ===
+    (function(){
+        // Compute daily change for each reservoir
+        var deltaData={}, ma3Data={}, ma5Data={}, ma10Data={};
+        order.forEach(function(n){deltaData[n]=[];ma3Data[n]=[];ma5Data[n]=[];ma10Data[n]=[];});
+        snaps.forEach(function(s,i){
+            order.forEach(function(n){
+                var r=s.reservoirs[n];
+                var curRz=r?parseFloat(r.rz):null;
+                if(i===0||curRz===null){
+                    deltaData[n].push(null);
+                }else{
+                    var prevRz=rzData[n][i-1];
+                    if(prevRz!==null&&curRz!==null){
+                        deltaData[n].push(parseFloat((curRz-prevRz).toFixed(3)));
+                    }else{deltaData[n].push(null);}
+                }
+            });
+        });
+        // Compute moving averages of water LEVEL (not delta)
+        function calcMA(arr,window){
+            var result=[];arr.forEach(function(v,i){
+                if(i<window-1||v===null){result.push(null);return;}
+                var sum=0,cnt=0;
+                for(var j=i-window+1;j<=i;j++){if(arr[j]!==null){sum+=arr[j];cnt++;}}
+                result.push(cnt>0?parseFloat((sum/cnt).toFixed(2)):null);
+            });
+            return result;
+        }
+        // MA of daily change (环比的均线), all on same scale
+        order.forEach(function(n){ma3Data[n]=calcMA(deltaData[n],3);ma5Data[n]=calcMA(deltaData[n],5);ma10Data[n]=calcMA(deltaData[n],10);});
+
+        // Build grid: 3 on top row, 2 on bottom
+        var gridHtml='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">';
+        order.forEach(function(n,i){
+            if(i===3)gridHtml+='</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;max-width:66%">';
+            var cid='chRzDelta_'+n.replace(/[^a-zA-Z一-龥]/g,'');
+            var dts=deltaData[n],lastD=dts.length>0?dts[dts.length-1]:null;
+            var deltaStr='';if(lastD!==null){var dc=lastD>0?'#4caf50':'#ef5350';var ds=lastD>0?'↑+':'↓';deltaStr=' <span style=\"color:'+dc+';font-size:10px\">'+ds+lastD.toFixed(2)+'m</span>';}
+            var curRz=rzData[n].length>0?rzData[n][rzData[n].length-1]:'--';
+            gridHtml+='<div><div style=\"font-size:11px;color:'+pal[i]+';font-weight:bold;margin-bottom:1px\">'+n+' '+curRz+'m'+deltaStr+'</div><div class=\"chart-box\" style=\"height:200px\" id=\"'+cid+'\"></div></div>';
+        });
+        gridHtml+='</div>';
+        document.getElementById('chCmpRzGrid').innerHTML=gridHtml;
+
+        // Render each chart: daily change bars + MA lines (all on same scale)
+        order.forEach(function(n,i){
+            var cid='chRzDelta_'+n.replace(/[^a-zA-Z一-龥]/g,'');
+            var m3=ma3Data[n],m5=ma5Data[n],m10=ma10Data[n],dt=deltaData[n];
+            setTimeout(function(){
+                mkChart(cid,{
+                    tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:pal[i],textStyle:{color:'#b0bec5',fontSize:10},
+                        formatter:function(params){
+                            var s='<b>'+params[0].axisValue+'</b><br/>';
+                            params.forEach(function(p){
+                                if(p.value===null||p.value===undefined)return;
+                                var v=parseFloat(p.value);
+                                var c=v>0?'#4caf50':v<0?'#ef5350':'#78909c';
+                                var vStr=(v>0?'+':'')+v.toFixed(2)+'m';
+                                s+=p.marker+' '+p.seriesName+': <b style=\"color:'+c+'\">'+vStr+'</b><br/>';
+                            });
+                            return s;
+                        }
+                    },
+                    legend:{data:['日Δ','MA3','MA5','MA10'],textStyle:{color:'#78909c',fontSize:9},top:0,itemWidth:12,itemHeight:8},
+                    grid:{left:48,right:12,top:28,bottom:20},
+                    xAxis:{type:'category',data:dates,axisLabel:{color:'#546e7a',fontSize:8,rotate:dates.length>14?45:0},axisLine:{lineStyle:{color:'#1a2532'}}},
+                    yAxis:{type:'value',name:'m',axisLabel:{color:'#546e7a',fontSize:9},splitLine:{lineStyle:{color:'#141c26'}},nameTextStyle:{fontSize:9}},
+                    series:[
+                        {name:'日Δ',type:'bar',barWidth:'60%',data:dt.map(function(v){return v!==null?{value:v,itemStyle:{color:v>=0?'#4caf50':'#ef5350'}}:null;})},
+                        {name:'MA3',type:'line',data:m3,lineStyle:{color:'#ffd54f',width:1.5},symbol:'none',smooth:true,connectNulls:true},
+                        {name:'MA5',type:'line',data:m5,lineStyle:{color:'#ff9800',width:1.5},symbol:'none',smooth:true,connectNulls:true},
+                        {name:'MA10',type:'line',data:m10,lineStyle:{color:'#ce93d8',width:2},symbol:'none',smooth:true,connectNulls:true}
+                    ]
+                });
+            },50);
+        });
+    })();
+
+    // === CHART 2: Inflow/Outflow Trends (chRsvrFlow) ===
+    (function(){
+        var totalIn=[],totalOut=[];
+        snaps.forEach(function(s){var ti=0,to=0;order.forEach(function(n){var r=s.reservoirs[n];if(r){ti+=r.inq?parseFloat(r.inq):0;to+=r.otq?parseFloat(r.otq):0;}});totalIn.push(ti);totalOut.push(to);});
+        mkChart('chRsvrFlow',{
+            tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#ff8a65',textStyle:{color:'#b0bec5',fontSize:11},
+                formatter:function(params){var s='<b>'+params[0].axisValue+' '+refTm+'</b><br/>';params.forEach(function(p){s+=p.marker+p.seriesName+': <b>'+(p.value!=null?parseFloat(p.value).toFixed(0):'--')+' m³/s</b><br/>';});return s;}
+            },
+            legend:{data:['总入库','总出库'],textStyle:{color:'#78909c',fontSize:10},top:0},
+            grid:{left:55,right:20,top:35,bottom:30},
+            xAxis:{type:'category',data:dates,axisLabel:{color:'#546e7a',fontSize:10,rotate:dates.length>20?45:0},axisLine:{lineStyle:{color:'#1a2532'}}},
+            yAxis:{type:'value',name:'m³/s',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+            series:[
+                {name:'总入库',type:'line',data:totalIn,lineStyle:{color:'#4fc3f7',width:2.5},symbol:'circle',symbolSize:4,smooth:true,areaStyle:{color:eGrad('rgba(79,195,247,0.2)','rgba(79,195,247,0)')}},
+                {name:'总出库',type:'line',data:totalOut,lineStyle:{color:'#ff8a65',width:2.5},symbol:'diamond',symbolSize:5,smooth:true,areaStyle:{color:eGrad('rgba(255,138,101,0.2)','rgba(255,138,101,0)')}}
+            ]
+        });
+    })();
+
+    // === CHART 3: Net Storage Rate (chNetFlow, new) ===
+    (function(){
+        var totalNet=[];snaps.forEach(function(s){var tn=0;order.forEach(function(n){var r=s.reservoirs[n];if(r){tn+=r.inq?parseFloat(r.inq):0;tn-=r.otq?parseFloat(r.otq):0;}});totalNet.push(tn);});
+        mkChart('chNetFlow',{
+            tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#81c784',textStyle:{color:'#b0bec5',fontSize:11},
+                formatter:function(params){var v=params[0].value;return '<b>'+params[0].axisValue+' '+refTm+'</b><br/>净蓄水: <b style="color:'+(v>0?'#4fc3f7':'#ff8a65')+'">'+v.toFixed(0)+' m³/s</b><br/>'+(v>0?'→ 蓄水中，水位上升':'→ 放水中，水位下降');}
+            },
+            grid:{left:55,right:20,top:10,bottom:30},
+            xAxis:{type:'category',data:dates,axisLabel:{color:'#546e7a',fontSize:10,rotate:dates.length>20?45:0},axisLine:{lineStyle:{color:'#1a2532'}}},
+            yAxis:{type:'value',name:'m³/s',axisLabel:{color:'#546e7a',fontSize:10},splitLine:{lineStyle:{color:'#141c26'}}},
+            series:[{type:'bar',data:totalNet.map(function(v){return{value:v,itemStyle:{color:v>0?'#4fc3f7':'#ff8a65'}};}),label:{show:true,position:'top',color:'#b0bec5',fontSize:10,formatter:function(p){return p.value>1000?(p.value/1000).toFixed(1)+'k':p.value.toFixed(0);}},markLine:{silent:true,data:[{yAxis:0,label:{formatter:'平衡线',fontSize:9},lineStyle:{color:'#546e7a',type:'dashed'}}]}}]
+        });
+    })();
+
+    // === CHART 4: Over-Limit Days Stats (hFloodTable, new) ===
+    (function(){
+        var rows='';order.forEach(function(n,i){
+            var r=latest.reservoirs[n];if(!r)return;
+            var rz=parseFloat(r.rz)||0,fsl=parseFloat(r.fsltdz)||0,la=parseFloat(r.laz)||0;
+            var d=rz-fsl;var isOver=d>0;
+            var pct=totalDays>0?(overDays[n]/totalDays*100).toFixed(0):'0';
+            rows+='<tr style="'+(isOver?'background:rgba(239,83,80,0.08)':'')+'">'+
+                '<td style="color:'+pal[i]+';font-weight:bold">'+n+'</td>'+
+                '<td>'+cap[n]+'MW</td>'+
+                '<td>'+rz.toFixed(2)+'m</td>'+
+                '<td>'+(fsl||'--')+'m</td>'+
+                '<td style="color:'+(isOver?'#ef5350':'#66bb6a')+';font-weight:bold">'+(d>0?'+':'')+d.toFixed(2)+'m</td>'+
+                '<td style="color:'+(overDays[n]>0?'#ef5350;font-weight:bold':'#78909c')+'">'+overDays[n]+' / '+totalDays+'天</td>'+
+                '<td style="color:'+(overDays[n]>0?'#ef5350':'#78909c')+'">'+(overDays[n]>totalDays/2?'⚠️ 持续超限':overDays[n]>0?'偶发超限':'🟢 正常')+'</td>'+
+                '</tr>';
+        });
+        document.getElementById('hFloodTable').innerHTML=
+            '<thead><tr><th>水库</th><th>装机</th><th>当前水位</th><th>汛限水位</th><th>距汛限</th><th>超限天数</th><th>状态</th></tr></thead><tbody>'+rows+'</tbody>';
+    })();
+
+    // === ANALYSIS TEXT ===
+    var aHtml='';var totalNet=0,rising=[],falling=[];
+    order.forEach(function(n){
+        var vals=rzData[n].filter(function(v){return v!=null;}),r=latest.reservoirs[n];
+        if(r){totalNet+=(r.inq?parseFloat(r.inq):0)-(r.otq?parseFloat(r.otq):0);}
+        if(vals.length>=2){var d=vals[vals.length-1]-vals[0];if(d>0.1)rising.push(n+'(+'+d.toFixed(2)+'m)');else if(d<-0.1)falling.push(n+'('+d.toFixed(2)+'m)');}
+    });
+    if(rising.length)aHtml+='<p>📈 <b style="color:#4fc3f7">水位上涨</b>：'+rising.join('、')+' → 入库>出库，蓄水持续增加</p>';
+    if(falling.length)aHtml+='<p>📉 <b style="color:#ff8a65">水位下降</b>：'+falling.join('、')+' → 出库>入库，持续放水发电</p>';
+    var overNames=[];order.forEach(function(n){if(overDays[n]>0)overNames.push(n+'('+overDays[n]+'天)');});
+    if(totalOver>0)aHtml+='<p>⚠️ <b style="color:#ef5350">超汛限记录</b>：'+overNames.join('、')+'</p>';
+    else aHtml+='<p>🟢 <b style="color:#66bb6a">无超汛限</b>：所有水库均在汛限以下运行</p>';
+    aHtml+='<p>💧 <b style="color:'+(totalNet>0?'#4fc3f7':'#ff8a65')+'">净蓄水速率</b>：五大库合计 <b>'+totalNet.toFixed(0)+' m³/s</b>'+(totalNet>0?' → 总体蓄水，水电出力有增量空间':totalNet<0?' → 总体放水，接近当前出力峰值':' → 进出平衡')+'</p>';
+    aHtml+='<p style="margin-top:6px;color:#78909c;font-size:12px">⚡ 对比时段: '+dates[0]+' ~ '+dates[totalDays-1]+' | 参考时刻: '+refTm+' | 快照数: '+totalDays+'天 | 五大库装机3,855MW</p>';
+    document.getElementById('hAnalysis').innerHTML=aHtml;
+    document.getElementById('hAnalysisCard').style.display='';
+
+    // === Shared: River BJJ chart + River table ===
+    var basins={};Object.values(HD.rivers).forEach(function(s){var b=s.hnnm||'其他';if(!basins[b])basins[b]=[];basins[b].push(s);});
+    var basinOrder=['湘江','资水','沅江','澧水','洞庭湖'];
+    var allNames=[],allBJJ=[],cls=[],bpal={湘江:'#4fc3f7',资水:'#66bb6a',沅江:'#ff8a65',澧水:'#ba68c8',洞庭湖:'#ffd54f'};
+    basinOrder.forEach(function(b){(basins[b]||[]).forEach(function(s){allNames.push(s.name);allBJJ.push(s.bjj!=null?parseFloat(s.bjj):null);cls.push(bpal[b]||'#78909c');});});
+    mkChart('chRiverBJJ',{
+        tooltip:{trigger:'axis',backgroundColor:'rgba(13,19,27,0.95)',borderColor:'#66bb6a',textStyle:{color:'#b0bec5',fontSize:11},formatter:function(p){return p[0].name+'<br/>比警戒: '+p[0].value+'m';}},
+        grid:{left:55,right:30,top:10,bottom:60},
+        xAxis:{type:'category',data:allNames,axisLabel:{color:'#546e7a',fontSize:9,rotate:45},axisLine:{lineStyle:{color:'#1a2532'}}},
+        yAxis:{type:'value',name:'比警戒(m)',axisLabel:{color:'#546e7a',fontSize:11},splitLine:{lineStyle:{color:'#141c26'}}},
+        series:[{type:'bar',data:allBJJ.map(function(v,i){return{value:v,itemStyle:{color:cls[i]}};}),label:{show:true,position:'bottom',color:'#b0bec5',fontSize:9,formatter:'{c}'},markLine:{silent:true,data:[{yAxis:0,label:{formatter:'警戒线',fontSize:10,color:'#ef5350'},lineStyle:{color:'#ef5350',type:'dashed'}}]}}]
+    });
+    // Basin tabs
+    var bKeys=Object.keys(basins).sort();
+    var tabsHtml='<span class="qb" style="font-size:10px;padding:3px 8px;'+(hBasin===''?'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7':'')+'" onclick="hBasin=\x27\x27;renderHydro();">全部('+Object.keys(HD.rivers).length+')</span>';
+    bKeys.forEach(function(b){tabsHtml+='<span class="qb" style="font-size:10px;padding:3px 8px;'+(hBasin===b?'background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7':'')+'" onclick="hBasin=\x27'+b+'\x27;renderHydro();">'+b+'('+(basins[b]||[]).length+')</span>';});
+    document.getElementById('hBasinTabs').innerHTML=tabsHtml;
+    // River table
+    var stns=Object.values(HD.rivers).filter(function(s){return !hBasin||(s.hnnm||'')===hBasin;});
+    stns.sort(function(a,b){return(parseFloat(a.bjj)||-99)-(parseFloat(b.bjj)||-99);});
+    var wpMap={4:'↓落',5:'↑涨',6:'→平'};
+    var t='<thead><tr><th>站名</th><th>流域</th><th>河流</th><th>水位(m)</th><th>流量</th><th>比警戒(m)</th><th>水势</th><th>时间</th></tr></thead><tbody>';
+    stns.forEach(function(s){
+        var bjj=parseFloat(s.bjj);var bjjC=bjj>0?'color:#ef5350;font-weight:bold':'';
+        t+='<tr><td>'+s.name+'</td><td>'+(s.hnnm||'')+'</td><td>'+(s.rvnm||'')+'</td><td>'+(s.z||'--')+'</td><td style="color:#4fc3f7">'+(s.q||'--')+'</td><td style="'+bjjC+'">'+(bjj?bjj.toFixed(2):'--')+'</td><td>'+((wpMap[s.wptn]||'--'))+'</td><td style="font-size:10px;color:#546e7a">'+(s.tm||'').slice(11,16)+'</td></tr>';
+    });
+    t+='</tbody>';
+    document.getElementById('hTable').innerHTML=t;
+}
+
+// ===== MAIN RENDER =====
+function doRender(){
+    if(curTab==='weather'){renderWeather();}
+    else if(curTab==='market'){renderMarket();}
+    else if(curTab==='hydro'){renderHydro();}
+    else if(curTab==='predict'){renderPredict();}
+    else if(curTab==='spot'){renderSpot();}
+    else if(curTab==='sr'){renderSR();}
+}
+
+// ===== PREDICT PANEL =====
+var PD=null, pCurDate=null;
+try{PD=window.PLAN_FORECAST;}catch(e){}
+
+function renderPredict(){
+    if(!PD){document.getElementById('pTable').innerHTML='<tr><td colspan="6" style="color:#546e7a;padding:20px">预测数据未加载，请先运行 export_plan_forecast.py</td></tr>';return;}
+
+    // Use selected date, or first forecast date if none selected
+    var d = (selDates.length>=1) ? selDates[selDates.length-1] : PD.forecast_dates[0];
+    pCurDate=d;
+    var today=(new Date()).toISOString().slice(0,10);
+    var isF = d > today;  // 当天及以前=历史实际, 以后=预测
+
+    // Weather lookup: forecast dates use fMap, history dates use WD
+    var wMap={};  // (hour) → {wind, dni, temp}
+    if(isF){
+        var fh=PD.forecast_hourly.filter(function(h){return h.date===d;});
+        fh.forEach(function(h){wMap[h.hour]=h;});  // forecast hours 0-23
+    }else if(WD && WD.hourly){
+        WD.hourly.forEach(function(w){
+            if(w.time.slice(0,10)===d){wMap[new Date(w.time).getHours()]=w;}  // weather hours 0-23
+        });
+    }
+
+    // Market data lookup (history)
+    var hh=PD.history_hourly.filter(function(h){return h.date===d;});
+    var hMap={}, hMapNext={};
+    hh.forEach(function(h){hMap[h.hour]=h;});
+    // Next-day hour 0 for history display hour 24
+    if(!isF){
+        var nextD=null;
+        var allHdates=PD.history_hourly.map(function(h){return h.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+        var idx=allHdates.indexOf(d);
+        if(idx>=0 && idx+1<allHdates.length) nextD=allHdates[idx+1];
+        if(nextD){PD.history_hourly.filter(function(h){return h.date===nextD;}).forEach(function(h){hMapNext[h.hour]=h;});}
+    }
+
+    // Build 24h
+    var d24=[];
+    for(var hr=1;hr<=24;hr++){
+        var wKey=(hr===24)?0:hr;
+        var wx=wMap[wKey]||{};
+        var hv=(hr===24)?(hMapNext[0]||{}):(hMap[hr]||{});
+        if(isF){
+            d24.push({h:hr,w:wx.wind_pred||0,s:wx.solar_pred||0,ws:wx.wind_speed,dni:wx.dni,temp:wx.temp});
+        }else{
+            d24.push({h:hr,w:hv.wind_actual||0,s:hv.solar_actual||0,ws:wx.wind!=null?+(wx.wind.toFixed(1)):'-',dni:wx.dni!=null?wx.dni:'-',temp:wx.temp!=null?wx.temp:'-'});
+        }
+    }
+
+    var hrs=d24.map(function(x){return x.h+'h';});
+    var wV=d24.map(function(x){return x.w;}), sV=d24.map(function(x){return x.s;});
+    var wsV=d24.map(function(x){return typeof x.ws==='number'?x.ws:null;});
+    var dniV=d24.map(function(x){return typeof x.dni==='number'?x.dni:null;});
+
+    var tag=isF?'预测':'实际';
+    document.getElementById('pWindTitle').textContent='🌬️ 风电'+tag+' · '+d;
+    document.getElementById('pSolarTitle').textContent='☀️ 光伏'+tag+' · '+d;
+    document.getElementById('pHydroTitle').textContent='💧 水电'+tag+' · '+d;
+    document.getElementById('pLoadTitle').textContent='⚡ 负荷'+tag+' · '+d;
+
+    var baseMW=function(){
+        return {
+            grid:{left:52,right:20,top:30,bottom:22},
+            xAxis:{data:hrs,axisLabel:{color:'#506888',fontSize:10},axisLine:{lineStyle:{color:'#1e2a36'}},splitLine:{show:false}},
+            yAxis:{name:'MW',nameTextStyle:{color:'#8899aa'},axisLabel:{color:'#506888',formatter:function(v){return(v/1e3).toFixed(1)+'k'}},splitLine:{lineStyle:{color:'#141c26'}}},
+            tooltip:{trigger:'axis',backgroundColor:'#111820',borderColor:'#2a4060',textStyle:{color:'#b0c0d0',fontSize:12}}
+        };
+    };
+    var baseDual=function(rightName,rightColor){
+        var o=baseMW();
+        o.grid.right=58;
+        o.yAxis=[o.yAxis,{name:rightName,nameTextStyle:{color:rightColor},axisLabel:{color:rightColor},splitLine:{show:false}}];
+        return o;
+    };
+
+    // Wind (dual: MW + wind speed)
+    var ow=baseDual('风速 m/s','#52c41a');
+    ow.series=[{name:'风电',type:'line',data:wV,lineStyle:{color:'#4fc3f7',width:2},areaStyle:{color:'rgba(79,195,247,.08)'},symbol:'circle',symbolSize:4,smooth:true},{name:'风速',type:'line',yAxisIndex:1,data:wsV,lineStyle:{color:'#52c41a',width:1.5},symbol:'diamond',symbolSize:5,connectNulls:false}];
+    // Solar (dual: MW + DNI)
+    var os=baseDual('DNI W/m²','#ffb74d');
+    os.series=[{name:'光伏',type:'line',data:sV,lineStyle:{color:'#ffb74d',width:2},areaStyle:{color:'rgba(255,183,77,.08)'},symbol:'circle',symbolSize:4,smooth:true},{name:'DNI',type:'line',yAxisIndex:1,data:dniV,lineStyle:{color:'#ffb74d',width:1.5,type:'dotted'},symbol:'triangle',symbolSize:5,connectNulls:false}];
+
+    // Hydro & Load data (all from forecast_hourly or history)
+    var hV=[], lV=[];
+    var fhAll=PD.forecast_hourly.filter(function(h){return h.date===d;});
+    var hhAll=PD.history_hourly.filter(function(h){return h.date===d;});
+    var hMap2={}; hhAll.forEach(function(h){hMap2[h.hour]=h;});
+    var fMap2={}; fhAll.forEach(function(h){fMap2[h.hour]=h;});
+    var hhNext2={};
+    if(!isF){
+        var allHD=PD.history_hourly.map(function(h){return h.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+        var idx2=allHD.indexOf(d);
+        if(idx2>=0&&idx2+1<allHD.length){
+            PD.history_hourly.filter(function(h){return h.date===allHD[idx2+1];}).forEach(function(h){hhNext2[h.hour]=h;});
+        }
+    }
+    for(var hr2=1;hr2<=24;hr2++){
+        var fk=(hr2===24)?0:hr2;
+        var fwx=fMap2[fk]||{};
+        var hvx=(hr2===24)?(hhNext2[0]||{}):(hMap2[hr2]||{});
+        if(isF){
+            hV.push(fwx.hydro_pred||0);
+            lV.push(fwx.load_pred||0);
+        }else{
+            hV.push(hvx.hydro_actual||0);
+            lV.push(hvx.load_actual||0);
+        }
+    }
+    var oh=baseMW(); oh.series=[{name:'水电',type:'line',data:hV,lineStyle:{color:'#42a5f5',width:2},areaStyle:{color:'rgba(66,165,245,.08)'},symbol:'circle',symbolSize:4,smooth:true}];
+    var ol=baseMW(); ol.series=[{name:'负荷',type:'line',data:lV,lineStyle:{color:'#ef5350',width:2},areaStyle:{color:'rgba(239,83,80,.08)'},symbol:'circle',symbolSize:4,smooth:true}];
+
+    echarts.init(document.getElementById('chPWind')).setOption(ow,true);
+    echarts.init(document.getElementById('chPSolar')).setOption(os,true);
+    echarts.init(document.getElementById('chPHydro')).setOption(oh,true);
+    echarts.init(document.getElementById('chPLoad')).setOption(ol,true);
+
+    var t='',wS=0,sS=0,hS=0,lS=0,wsS=0,dnS=0,wsN=0,dnN=0;
+    d24.forEach(function(x,i){
+        wS+=x.w;sS+=x.s;hS+=hV[i];lS+=lV[i];
+        if(typeof x.ws==='number'){wsS+=x.ws;wsN++;}
+        if(typeof x.dni==='number'){dnS+=x.dni;dnN++;}
+        t+='<tr><td>'+x.h+'h</td><td class="dim">'+(typeof x.ws==='number'?x.ws:'-')+'</td><td style="color:#4fc3f7;font-weight:600">'+x.w.toLocaleString()+'</td><td class="dim">'+(typeof x.dni==='number'?x.dni:'-')+'</td><td style="color:#ffb74d;font-weight:600">'+x.s.toLocaleString()+'</td><td style="color:#42a5f5">'+hV[i].toLocaleString()+'</td><td style="color:#ef5350">'+lV[i].toLocaleString()+'</td><td class="dim">'+(typeof x.temp==='number'?x.temp+'°C':x.temp)+'</td></tr>';
+    });
+    var wAvg=Math.round(wS/24), sAvg=Math.round(sS/24), hAvg=Math.round(hS/24), lAvg=Math.round(lS/24);
+    t+='<tr style="background:#0f151d;font-weight:600;color:#b0bec5"><td>日计</td><td>'+(wsN>0?'均 '+(wsS/wsN).toFixed(1):'-')+'</td><td style="color:#4fc3f7">'+wAvg.toLocaleString()+' MW</td><td>'+(dnN>0?'总 '+dnS.toLocaleString():'-')+'</td><td style="color:#ffb74d">'+sAvg.toLocaleString()+' MW</td><td style="color:#42a5f5">'+hAvg.toLocaleString()+' MW</td><td style="color:#ef5350">'+lAvg.toLocaleString()+' MW</td><td>合计 '+(wAvg+sAvg+hAvg).toLocaleString()+' MW</td></tr>';
+    document.getElementById('pTable').innerHTML=t;
+}
+
+// ===== SPOT PANEL =====
+function renderSpot(){
+    if(!PD){document.getElementById('spTable').innerHTML='<tr><td colspan="9" style="color:#546e7a;padding:20px">数据未加载</td></tr>';return;}
+
+    var d = (selDates.length>=1) ? selDates[selDates.length-1] : PD.forecast_dates[0];
+    var today=(new Date()).toISOString().slice(0,10);
+    var isF = d > today;
+    var tag=isF?'预测':'实际';
+
+    // Build 24h data for spot
+    var fhAll=PD.forecast_hourly.filter(function(h){return h.date===d;});
+    var hhAll=PD.history_hourly.filter(function(h){return h.date===d;});
+    var fMap={}; fhAll.forEach(function(h){fMap[h.hour]=h;});
+    var hMap={}; hhAll.forEach(function(h){hMap[h.hour]=h;});
+    var hMapN={};
+    if(!isF){
+        var allHD=PD.history_hourly.map(function(h){return h.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+        var idx=allHD.indexOf(d);
+        if(idx>=0&&idx+1<allHD.length){
+            PD.history_hourly.filter(function(h){return h.date===allHD[idx+1];}).forEach(function(h){hMapN[h.hour]=h;});
+        }
+    }
+
+    var spot24=[];
+    for(var hr=1;hr<=24;hr++){
+        var fk=(hr===24)?0:hr;
+        var fw=fMap[fk]||{};
+        var hv=(hr===24)?(hMapN[0]||{}):(hMap[hr]||{});
+        if(isF){
+            spot24.push({
+                h:hr, sr:fw.sr||0,
+                price:fw.price_pred||0, ph:fw.price_p_high||0, pz:fw.price_p_zero||0,
+                price_v2:fw.price_v2||0, ph_v2:fw.price_v2_p_high||0, pz_v2:fw.price_v2_p_zero||0
+            });
+        }else{
+            spot24.push({h:hr,sr:hv.sr||0,price:hv.price_actual!=null?hv.price_actual:'-',ph:'-',pz:'-',price_v2:'-',ph_v2:'-',pz_v2:'-'});
+        }
+    }
+
+    var hrs=spot24.map(function(x){return x.h+'h';});
+    var srV=spot24.map(function(x){return (x.sr*100).toFixed(1);});
+    var prV=spot24.map(function(x){return typeof x.price==='number'?x.price:null;});
+    var prV2=spot24.map(function(x){return typeof x.price_v2==='number'?x.price_v2:null;});
+
+    document.getElementById('spSRTitle').textContent='📐 综合供给率 '+tag+' · '+d;
+    document.getElementById('spPriceTitle').textContent='💰 现货出清价格 '+tag+' · '+d+' | V1全历史+V2近7日';
+
+    var base=function(){
+        return {grid:{left:52,right:20,top:30,bottom:22},xAxis:{data:hrs,axisLabel:{color:'#506888',fontSize:10},axisLine:{lineStyle:{color:'#1e2a36'}},splitLine:{show:false}},yAxis:{axisLabel:{color:'#506888'},splitLine:{lineStyle:{color:'#141c26'}}},tooltip:{trigger:'axis',backgroundColor:'#111820',borderColor:'#2a4060',textStyle:{color:'#b0c0d0',fontSize:12}},legend:{data:['V1-历史分箱','V2-7日近邻'],textStyle:{color:'#8899aa'},bottom:0}};
+    };
+    var srOpt=base();srOpt.yAxis.name='%';srOpt.yAxis.nameTextStyle={color:'#8899aa'};srOpt.yAxis.axisLabel.formatter='{value}%';srOpt.legend=undefined;
+    srOpt.series=[{type:'line',data:srV,lineStyle:{color:'#ce93d8',width:2},areaStyle:{color:'rgba(206,147,216,.1)'},symbol:'circle',symbolSize:4,smooth:true,markLine:{silent:true,data:[{yAxis:40,name:'40%'},{yAxis:50,name:'50%'}],lineStyle:{color:'#ff9800',type:'dashed'}}}];
+
+    var prOpt=base();prOpt.yAxis.name='¥/MWh';prOpt.yAxis.nameTextStyle={color:'#8899aa'};
+    prOpt.series=[
+        {name:'V1-历史分箱',type:'line',data:prV,lineStyle:{color:'#ff7043',width:2},areaStyle:{color:'rgba(255,112,67,.08)'},symbol:'circle',symbolSize:4,smooth:true},
+        {name:'V2-7日近邻',type:'line',data:prV2,lineStyle:{color:'#ffab00',width:2,type:'dashed'},symbol:'diamond',symbolSize:4,smooth:true},
+    ];
+    prOpt.series[0].markLine={silent:true,data:[{yAxis:200,name:'200'},{yAxis:400,name:'400'}],lineStyle:{color:'#4fc3f7',type:'dashed'}};
+
+    echarts.init(document.getElementById('chSPsr')).setOption(srOpt,true);
+    echarts.init(document.getElementById('chSPprice')).setOption(prOpt,true);
+
+    var t='',srSum=0,prSum=0,prN=0,prV2Sum=0,prV2N=0;
+    spot24.forEach(function(x,i){
+        srSum+=x.sr*100;
+        if(typeof x.price==='number'){prSum+=x.price;prN++;}
+        if(typeof x.price_v2==='number'){prV2Sum+=x.price_v2;prV2N++;}
+        t+='<tr><td>'+x.h+'h</td><td style="color:#ce93d8;font-weight:600">'+(x.sr*100).toFixed(1)+'%</td>'
+          +'<td style="color:#ff7043;font-weight:600">'+(typeof x.price==='number'?x.price:'-')+'</td><td class="dim">'+(typeof x.ph==='number'?x.ph+'%':'-')+'</td><td class="dim">'+(typeof x.pz==='number'?x.pz+'%':'-')+'</td>'
+          +'<td style="color:#ffab00;font-weight:600">'+(typeof x.price_v2==='number'?x.price_v2:'-')+'</td><td class="dim">'+(typeof x.ph_v2==='number'?x.ph_v2+'%':'-')+'</td><td class="dim">'+(typeof x.pz_v2==='number'?x.pz_v2+'%':'-')+'</td></tr>';
+    });
+    t+='<tr style="background:#0f151d;font-weight:600;color:#b0bec5"><td>日均</td><td style="color:#ce93d8">'+(srSum/24).toFixed(1)+'%</td>'
+      +'<td style="color:#ff7043">'+(prN>0?Math.round(prSum/prN):'-')+'</td><td></td><td></td>'
+      +'<td style="color:#ffab00">'+(prV2N>0?Math.round(prV2Sum/prV2N):'-')+'</td><td></td><td></td></tr>';
+    document.getElementById('spTable').innerHTML=t;
+}
+
+// ===== SR COMPARE PANEL =====
+function renderSR(){
+    if(!PD){return;}
+    var sDates = (selDates.length>0) ? selDates.slice(-14) : PD.forecast_dates.slice(0,7);
+    var today=(new Date()).toISOString().slice(0,10);
+
+    // Build 24h data for each selected date
+    var series=[], colors=['#4fc3f7','#ffb74d','#42a5f5','#ef5350','#81c784','#ce93d8','#ff8a65','#a1887f','#90caf9','#f48fb1','#ffe082','#80cbc4','#b39ddb','#ef9a9a'];
+    var hrs=[];
+    for(var h=1;h<=24;h++) hrs.push(h+'h');
+
+    var allSR=[]; // [date][hour] = sr%
+
+    sDates.forEach(function(d,i){
+        var isF = d > today;
+        var fhAll=PD.forecast_hourly.filter(function(h){return h.date===d;});
+        var hhAll=PD.history_hourly.filter(function(h){return h.date===d;});
+        var fMap={}; fhAll.forEach(function(h){fMap[h.hour]=h;});
+        var hMap={}; hhAll.forEach(function(h){hMap[h.hour]=h;});
+        var hMapN={};
+        if(!isF){
+            var allHD=PD.history_hourly.map(function(h){return h.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+            var idx=allHD.indexOf(d);
+            if(idx>=0&&idx+1<allHD.length){
+                PD.history_hourly.filter(function(h){return h.date===allHD[idx+1];}).forEach(function(h){hMapN[h.hour]=h;});
+            }
+        }
+        var daySR=[];
+        for(var hr=1;hr<=24;hr++){
+            var fk=(hr===24)?0:hr;
+            var fw=fMap[fk]||{};
+            var hv=(hr===24)?(hMapN[0]||{}):(hMap[hr]||{});
+            var sr = isF ? (fw.sr||0) : (hv.sr||0);
+            daySR.push(parseFloat((sr*100).toFixed(1)));
+        }
+        allSR.push({date:d, data:daySR, isFcst:isF});
+        series.push({
+            name: d.slice(5)+(isF?' 预测':' 实际'),
+            type: 'line',
+            data: daySR,
+            lineStyle: {color: colors[i%colors.length], width: 2},
+            symbol: 'circle', symbolSize: 5,
+            itemStyle: {color: colors[i%colors.length]},
+            smooth: false
+        });
+    });
+
+    echarts.init(document.getElementById('chSRcmp')).setOption({
+        tooltip:{trigger:'axis',backgroundColor:'#111820',borderColor:'#2a4060',textStyle:{color:'#b0c0d0',fontSize:12}},
+        legend:{type:'scroll',bottom:0,textStyle:{color:'#8899aa',fontSize:10},pageTextStyle:{color:'#8899aa'}},
+        grid:{left:52,right:25,top:20,bottom:40},
+        xAxis:{data:hrs,axisLabel:{color:'#506888',fontSize:10},axisLine:{lineStyle:{color:'#1e2a36'}},splitLine:{show:false}},
+        yAxis:{name:'%',nameTextStyle:{color:'#8899aa'},axisLabel:{color:'#506888',formatter:'{value}%'},splitLine:{lineStyle:{color:'#141c26'}}},
+        series: series
+    },true);
+
+    // Table: rows=hour, cols=date1|date2|...
+    var th='<tr><th>时</th>';
+    sDates.forEach(function(d){th+='<th>'+(d.slice(5))+(d>today?' 📈':'')+'</th>';});
+    th+='</tr>';
+    var tb='';
+    for(var hr=1;hr<=24;hr++){
+        tb+='<tr><td>'+hr+'h</td>';
+        sDates.forEach(function(d,i){
+            var v=allSR[i].data[hr-1];
+            var c=v>50?'#81c784':v>40?'#ffb74d':'#ef5350';
+            tb+='<td style="color:'+c+';font-weight:600">'+v.toFixed(1)+'%</td>';
+        });
+        tb+='</tr>';
+    }
+    // Avg row
+    tb+='<tr style="background:#0f151d;font-weight:600;color:#b0bec5"><td>日均</td>';
+    sDates.forEach(function(d,i){
+        var avg=(allSR[i].data.reduce(function(a,b){return a+b;},0)/24).toFixed(1);
+        tb+='<td>'+avg+'%</td>';
+    });
+    tb+='</tr>';
+    document.querySelector('#srTable thead').innerHTML=th;
+    document.querySelector('#srTable tbody').innerHTML=tb;
+}
+
+// ===== INIT =====
+var predMsg=PD?' | 预测:'+PD.forecast_dates[0]+'~'+PD.forecast_dates[PD.forecast_dates.length-1]:'';
+status((WD?'天气数据已加载('+WD.hourly.length+'条)':'天气:未加载')+' | '+(MD?'市场数据已加载('+MD.hourly.length+'条)':'市场:未加载')+' | '+(HD&&HD.reservoirs?'水电:已加载('+Object.keys(HD.reservoirs).length+'库)':'水电:未加载')+predMsg);
+
+if(WD||MD){
+    buildDropdowns();
+    quickSel('default');
+}
+
+// Load echarts locally
+(function loadE(){
+    if(typeof echarts!=='undefined'){doRender();return;}
+    var s=document.createElement('script');
+    s.src='echarts.min.js';
+    s.onload=function(){doRender();};
+    s.onerror=function(){status('echarts本地加载失败',true);};
+    document.head.appendChild(s);
+})();
+
+// Auto-refresh every 30 min to pick up updated JS data files
+setInterval(function(){location.reload(true);},30*60*1000);
+
+// Tab & resize
+document.addEventListener('click',function(e){
+    var ds=document.getElementById('dateSelect');
+    if(ds&&!ds.contains(e.target))ds.classList.remove('open');
+});
+window.addEventListener('resize',function(){
+    if(!hasE())return;
+    ['chWind','chDNI','chTemp','chPrecip','chRucheng','chPrice','chWindM','chSolarM','chHydroM','chInterM','chLoadM','chSupplyM','chRainHydro','chRsvrLevel','chRsvrFlow','chRiverBJJ'].forEach(function(id){
+        var el=document.getElementById(id);if(el){var c=echarts.getInstanceByDom(el);if(c)c.resize();}
+    });
+});
+</script></body></html>
