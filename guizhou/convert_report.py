@@ -19,15 +19,19 @@
   11. 天气预报与相似日匹配中加入风速图表（使用报告内嵌的 wind 数据）
   12. 配色主题：深色 → 浅色（白色背景）
   13. 天气数据更新：用 wind_db.py 的 SQLite（关岭/贵阳，Open-Meteo）补数并回写全要素
+  14. 重建日历入口页 index.html，并刷新各报告页的「前一天 / 日历 / 后一天」导航
 
 （兼容两套历史模板：早期文件的套利卡片与明细表列名不同，脚本会自动识别。）
 
 用法：
-  # 【推荐】批量转换脚本所在文件夹下的所有 report_*.html（原地覆盖 + 更新天气数据）
+  # 【推荐】批量转换脚本所在文件夹下的所有 report_*.html（原地覆盖 + 天气数据 + 日历入口）
   python convert_report.py
 
   # 只改版式，不动天气数据
   python convert_report.py --no-data
+
+  # 不重建日历入口页
+  python convert_report.py --no-index
 
   # 只预览效果，不写入文件（也不会联网取数）
   python convert_report.py --dry-run
@@ -585,6 +589,21 @@ def inject_only_data(path, pipeline):
         return None
 
 
+def build_index(folder, nav=True):
+    """重建日历入口页 index.html（并刷新各报告页导航）。"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import make_index  # noqa: PLC0415
+
+        stats = make_index.refresh(folder, nav=nav)
+        print(
+            f"日历入口：index.html 已重建（{stats['days']} 天，"
+            f"{stats['first']} ~ {stats['last']}），导航刷新 {stats['nav']} 个文件。"
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"日历入口生成失败：{exc}")
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="把原始贵州电力套利报告 HTML 转换为定制版本（含天气数据更新）",
@@ -600,6 +619,11 @@ def main():
         "--no-data",
         action="store_true",
         help="只改版式，不更新天气数据（默认会用 wind_db 补数并回写）",
+    )
+    ap.add_argument(
+        "--no-index",
+        action="store_true",
+        help="不重建日历入口页 index.html、不刷新报告页导航",
     )
     args = ap.parse_args()
 
@@ -644,6 +668,8 @@ def main():
         print(f"\n完成：共 {len(targets)} 个文件，其中 {changed} 个版式有改动。")
         if with_data:
             print(f"天气数据：回写 {data_total['applied']} 处，缺失 {data_total['missing']} 处。")
+        if not args.no_index and not args.dry_run:
+            build_index(folder, nav=not args.copy)
         return 0
 
     # ── 单文件模式 ──
