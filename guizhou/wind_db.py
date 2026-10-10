@@ -322,10 +322,26 @@ def load_report(path):
     return text, match, json.loads(match.group(2))
 
 
+DATE_RE = re.compile(r"(\d{4})\D(\d{1,2})\D(\d{1,2})")
+
+
+def normalize_date(value):
+    """把报告里可能出现的 '2026-10-2' / '2026/10/02' 等统一成 'YYYY-MM-DD'。"""
+    match = DATE_RE.search(str(value))
+    if not match:
+        raise ValueError(f"无法识别的日期：{value!r}")
+    year, month, day = (int(part) for part in match.groups())
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
 def report_dates(data):
-    """返回 (申报日, [相似日...])"""
-    target = data["target_date"]
-    similar = [s["date"] for s in data.get("similar_days", [])]
+    """返回 (申报日, [相似日...])，日期统一为 YYYY-MM-DD。"""
+    target = normalize_date(data["target_date"])
+    similar = [
+        normalize_date(item["date"])
+        for item in data.get("similar_days", [])
+        if item.get("date")
+    ]
     return target, similar
 
 
@@ -579,9 +595,9 @@ def cmd_fetch(args):
         target, similar = report_dates(data)
         jobs = [(target, "target", "申报日")] + [(d, "similar", "相似日") for d in similar]
     elif args.start and args.end:
-        jobs = [(args.start, "target", "区间")]
-        if args.start != args.end:
-            jobs = [(f"{args.start}~{args.end}", "target", "区间")]
+        start, end = normalize_date(args.start), normalize_date(args.end)
+        span = start if start == end else f"{start}~{end}"
+        jobs = [(span, "target", "区间")]
     else:
         raise SystemExit("请提供 --report，或 --start 与 --end")
 
