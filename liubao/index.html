@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>柳堡 · 天气数据日历</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --accent: #38bdf8;
+    --accent-2: #0ea5e9;
+    --text: #e2e8f0;
+    --muted: #7c8aa5;
+    --available: #22d3ee;
+    --today: #f59e0b;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(circle at 20% 0%, #1e293b 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 460px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .title { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  .title span { color: var(--accent); }
+  .sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .sub b { color: var(--available); }
+
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-nav button {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: .18s;
+  }
+  .cal-nav button:hover { background: var(--accent-2); border-color: var(--accent-2); color: #00131f; }
+  .cal-nav .label { font-size: 16px; font-weight: 600; letter-spacing: .5px; }
+
+  .weekdays, .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .weekdays div {
+    text-align: center; font-size: 12px; color: var(--muted);
+    padding-bottom: 8px; font-weight: 600;
+  }
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: default;
+    color: var(--muted);
+    transition: .15s;
+  }
+  .cell.empty { visibility: hidden; }
+  .cell.has {
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .cell.has:hover {
+    background: var(--accent-2);
+    color: #00131f;
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(14,165,233,.35);
+  }
+  .cell.has::after {
+    content: "";
+    position: absolute;
+    bottom: 6px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--available);
+  }
+  .cell.has:hover::after { background: #00131f; }
+  .cell.today { outline: 2px solid var(--today); outline-offset: -2px; }
+  .cell.checking { opacity: .5; }
+
+  footer {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer .legend { display: flex; align-items: center; gap: 6px; }
+  footer .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--available); display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">柳堡<span> · 天气数据</span></div>
+    </header>
+    <div class="sub" id="sub">点击高亮日期查看当日天气数据</div>
+
+    <div class="cal-nav">
+      <button id="prev" aria-label="上个月">‹</button>
+      <div class="label" id="label"></div>
+      <button id="next" aria-label="下个月">›</button>
+    </div>
+
+    <div class="weekdays">
+      <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+    </div>
+    <div class="grid" id="grid"></div>
+
+    <footer>
+      <div class="legend"><span class="dot"></span> 有数据，可点击查看</div>
+      <div id="count"></div>
+    </footer>
+  </div>
+
+<script>
+  // 所有已生成的数据日期
+  var AVAILABLE = [
+    "2026-04-17","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-27","2026-04-28","2026-04-29","2026-04-30",
+    "2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29",
+    "2026-06-01","2026-06-02","2026-06-04","2026-06-05","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-22","2026-06-23","2026-06-24","2026-06-25","2026-06-26","2026-06-29","2026-06-30",
+    "2026-07-01","2026-07-02","2026-07-03","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31",
+    "2026-08-03","2026-08-04","2026-08-05","2026-08-06","2026-08-07","2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-31",
+    "2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-05","2026-09-06","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-19","2026-09-20","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-28","2026-09-29","2026-09-30",
+    "2026-10-08","2026-10-09","2026-10-10"
+  ];
+
+  var PREFIX = "jiangsu_weather_v8_柳堡_";
+
+  // 内置列表：仅在浏览器无法自动探测文件时（本地 file:// 双击打开）作为回退使用
+  var fallbackSet = {};
+  AVAILABLE.forEach(function (d) { fallbackSet[d] = true; });
+
+  // 模式：auto = 自动探测文件是否存在；fallback = 使用内置列表
+  var mode = "auto";
+
+  // 初始显示最新数据所在月份
+  var latest = AVAILABLE[AVAILABLE.length - 1].split("-");
+  var viewYear = parseInt(latest[0], 10);
+  var viewMonth = parseInt(latest[1], 10) - 1; // 0-based
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fileFor(ds) { return PREFIX + ds + ".html"; }
+
+  function markAvailable(cell, ds) {
+    cell.classList.add("has");
+    cell.title = "查看 " + ds + " 天气数据";
+    cell.addEventListener("click", function () { window.open(encodeURI(fileFor(ds)), "_blank"); });
+  }
+
+  function render() {
+    document.getElementById("label").textContent = viewYear + " 年 " + (viewMonth + 1) + " 月";
+
+    var grid = document.getElementById("grid");
+    grid.innerHTML = "";
+
+    var first = new Date(viewYear, viewMonth, 1);
+    var startOffset = (first.getDay() + 6) % 7; // 周一为第一列
+    var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    for (var i = 0; i < startOffset; i++) {
+      var e = document.createElement("div");
+      e.className = "cell empty";
+      grid.appendChild(e);
+    }
+
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var monthCount = 0;
+    var probes = [];
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var ds = viewYear + "-" + pad(viewMonth + 1) + "-" + pad(d);
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = d;
+      if (ds === todayStr) cell.classList.add("today");
+
+      if (mode === "fallback") {
+        if (fallbackSet[ds]) { markAvailable(cell, ds); monthCount++; }
+      } else {
+        (function (c, dateStr) {
+          c.classList.add("checking");
+          probes.push(
+            fetch(encodeURI(fileFor(dateStr)), { method: "HEAD", cache: "no-store" })
+              .then(function (res) {
+                c.classList.remove("checking");
+                if (res.ok) { markAvailable(c, dateStr); monthCount++; }
+              })
+              .catch(function () { c.classList.remove("checking"); })
+          );
+        })(cell, ds);
+      }
+      grid.appendChild(cell);
+    }
+
+    var countEl = document.getElementById("count");
+    if (mode === "fallback") {
+      countEl.textContent = "本月 " + monthCount + " 天";
+    } else {
+      countEl.textContent = "检测中…";
+      Promise.all(probes).then(function () {
+        countEl.textContent = "本月 " + monthCount + " 天";
+      });
+    }
+  }
+
+  // 判断浏览器能否直接探测文件：
+  //  - 部署在网站 / GitHub Pages 上时探测生效，新增 HTML 后日历自动更新；
+  //  - 本地 file:// 双击打开时 fetch 被浏览器拦截，自动回退到内置列表。
+  function boot() {
+    document.getElementById("sub").textContent = "点击高亮日期查看当日天气数据";
+    if (typeof fetch !== "function") { mode = "fallback"; render(); return; }
+    fetch(encodeURI(fileFor(AVAILABLE[AVAILABLE.length - 1])), { method: "HEAD", cache: "no-store" })
+      .then(function () { mode = "auto"; })
+      .catch(function () { mode = "fallback"; })
+      .then(function () { render(); });
+  }
+
+  document.getElementById("prev").addEventListener("click", function () {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    render();
+  });
+  document.getElementById("next").addEventListener("click", function () {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    render();
+  });
+
+  boot();
+</script>
+</body>
+</html>
