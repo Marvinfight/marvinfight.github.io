@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>湖南水电监测看板</title>
+<script src="echarts.min.js"></script>
+<script src="hunan_hypower_data.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0e27; color:#e0e6f0; font-family:'Microsoft YaHei',sans-serif; overflow-x:hidden; }
+.header { background:linear-gradient(135deg,#001f3f 0%,#0a1628 100%); padding:12px 24px; border-bottom:1px solid #1a3a5c; display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:22px; background:linear-gradient(90deg,#4fc3f7,#29b6f6,#0288d1); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.header .info { font-size:13px; color:#7eb8da; }
+.header .info span { margin-left:16px; }
+.status-bar { background:#0d1528; padding:6px 24px; font-size:12px; color:#4caf50; border-bottom:1px solid #1a2a44; display:flex; gap:24px; }
+.refresh-btn { background:#1565c0; color:#fff; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-size:12px; }
+.refresh-btn:hover { background:#1976d2; }
+.container { padding:16px 20px; display:grid; gap:14px; }
+
+/* Reservoir Cards */
+.rsvr-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+.rsvr-card { background:linear-gradient(180deg,#0d1f35 0%,#0a1625 100%); border:1px solid #1a3a5c; border-radius:8px; padding:16px 14px; text-align:center; position:relative; overflow:hidden; }
+.rsvr-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.rsvr-card.warning::before { background:#ff6d00; }
+.rsvr-card.danger::before { background:#ff1744; }
+.rsvr-card.normal::before { background:#00c853; }
+.rsvr-card .name { font-size:18px; font-weight:bold; margin-bottom:4px; }
+.rsvr-card .basin { font-size:11px; color:#5c8db5; margin-bottom:8px; }
+.rsvr-card .level-wrap { position:relative; width:90px; height:90px; margin:8px auto; }
+.rsvr-card .level-val { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+.rsvr-card .level-val .z { font-size:28px; font-weight:bold; font-family:'Consolas',monospace; }
+.rsvr-card .level-val .unit { font-size:11px; color:#7eb8da; }
+.rsvr-card .limits { font-size:10px; color:#5c8db5; margin:4px 0; }
+.rsvr-card .flow { display:flex; justify-content:space-around; margin-top:8px; padding-top:8px; border-top:1px solid #1a3a5c; }
+.rsvr-card .flow-item { text-align:center; }
+.rsvr-card .flow-val { font-size:16px; font-weight:bold; font-family:'Consolas',monospace; }
+.rsvr-card .flow-val.in { color:#4fc3f7; }
+.rsvr-card .flow-val.out { color:#ff8a65; }
+.rsvr-card .flow-label { font-size:10px; color:#5c8db5; }
+.rsvr-card .capacity { font-size:10px; color:#3d6b8e; margin-top:4px; }
+.warn-tag { display:inline-block; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:bold; margin-top:4px; }
+.warn-tag.danger { background:rgba(255,23,68,0.2); color:#ff5252; }
+.warn-tag.warning { background:rgba(255,109,0,0.2); color:#ff9100; }
+.warn-tag.safe { background:rgba(0,200,83,0.15); color:#69f0ae; }
+
+/* Charts Row */
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.chart-panel { background:linear-gradient(180deg,#0d1f35 0%,#0a1625 100%); border:1px solid #1a3a5c; border-radius:8px; padding:12px; }
+.chart-panel.full { grid-column:1/-1; }
+.chart-panel h3 { font-size:14px; color:#4fc3f7; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #1a3a5c; }
+.chart-box { width:100%; height:300px; }
+
+/* River Table */
+.river-section { background:linear-gradient(180deg,#0d1f35 0%,#0a1625 100%); border:1px solid #1a3a5c; border-radius:8px; padding:12px; }
+.river-section h3 { font-size:14px; color:#4fc3f7; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #1a3a5c; }
+.basin-tabs { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.basin-tab { padding:5px 14px; background:rgba(21,101,192,0.2); border:1px solid #1565c0; color:#7eb8da; border-radius:4px; cursor:pointer; font-size:12px; }
+.basin-tab.active { background:#1565c0; color:#fff; }
+.river-table { width:100%; border-collapse:collapse; font-size:13px; }
+.river-table th { background:#0d1f3f; color:#4fc3f7; padding:8px 10px; text-align:left; font-weight:normal; font-size:12px; border-bottom:1px solid #1a3a5c; }
+.river-table td { padding:7px 10px; border-bottom:1px solid #0f1f35; }
+.river-table tr:hover td { background:rgba(21,101,192,0.1); }
+.river-table .warn-cell { color:#ff5252; font-weight:bold; }
+.river-table .flow-cell { font-family:'Consolas',monospace; color:#4fc3f7; }
+
+.footer { text-align:center; padding:12px; font-size:11px; color:#3d6b8e; border-top:1px solid #1a3a5c; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💧 湖南水电监测看板</h1>
+  <div class="info">
+    <span id="updateTime">--</span>
+    <button class="refresh-btn" onclick="loadData()">🔄 刷新</button>
+    <a href="湖南天气看板.html" style="color:#4fc3f7;font-size:12px;margin-left:16px;text-decoration:none;">← 天气看板</a>
+  </div>
+</div>
+<div class="status-bar" id="statusBar">✅ 数据加载中...</div>
+
+<div class="container">
+  <!-- 五大水库卡片 -->
+  <div class="rsvr-grid" id="rsvrCards"></div>
+
+  <!-- 图表行 -->
+  <div class="charts-row">
+    <div class="chart-panel"><h3>📊 五大水库水位 (m) - 含汛限/死水位参考</h3><div class="chart-box" id="chartLevel"></div></div>
+    <div class="chart-panel"><h3>📈 出入库流量对比 (m³/s)</h3><div class="chart-box" id="chartFlow"></div></div>
+  </div>
+
+  <!-- 流域水位 -->
+  <div class="chart-panel full"><h3>🌊 各流域控制站水位 - 比警戒 (m)</h3><div class="chart-box" id="chartRiver"></div></div>
+
+  <!-- 河道站表格 -->
+  <div class="river-section">
+    <h3>📍 河道控制站详情</h3>
+    <div class="basin-tabs" id="basinTabs"></div>
+    <div style="overflow-x:auto;">
+      <table class="river-table">
+        <thead><tr><th>站名</th><th>流域</th><th>河流</th><th>水位(m)</th><th>流量(m³/s)</th><th>比警戒(m)</th><th>水势</th><th>时间</th></tr></thead>
+        <tbody id="riverBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">数据源: 湖南水文公众服务一张图 | 水电装机参考: 五强溪1200MW · 凤滩815MW · 柘溪1040MW · 东江500MW · 江垭300MW</div>
+
+<script>
+var DATA = window.HUNAN_HYDRO_DATA || null;
+var currentBasin = '';
+
+function getWPTN(val) {
+  if (val === '4') return '↓落';
+  if (val === '5') return '↑涨';
+  if (val === '6') return '→平';
+  return '--';
+}
+
+function getWPTNClass(val) {
+  if (val === '4') return 'safe';
+  if (val === '5') return 'danger';
+  return '';
+}
+
+function renderCards() {
+  var order = ['五强溪','凤滩','柘溪','东江','江垭'];
+  var html = '';
+  order.forEach(function(name) {
+    var d = DATA.reservoirs[name];
+    if (!d) return;
+    var z = parseFloat(d.rz) || 0;
+    var fsl = parseFloat(d.fsltdz) || 9999;
+    var la = parseFloat(d.laz) || 0;
+    var hhrz = parseFloat(d.hhrz) || 0;
+    var inq = d.inq ? parseFloat(d.inq).toFixed(0) : '--';
+    var otq = d.otq ? parseFloat(d.otq).toFixed(0) : '--';
+    var w = d.w ? parseFloat(d.w).toFixed(2) : '--';
+
+    // Determine status
+    var cardClass = 'normal', tagClass = 'safe', tagText = '正常';
+    if (z > fsl && fsl > 0) {
+      if (z > hhrz && hhrz > 0) { cardClass = 'danger'; tagClass = 'danger'; tagText = '超历史最高!'; }
+      else if (z > fsl + 3) { cardClass = 'danger'; tagClass = 'danger'; tagText = '超汛限>3m'; }
+      else { cardClass = 'warning'; tagClass = 'warning'; tagText = '超汛限'; }
+    }
+
+    // Gauge percent (0-100% between dead level and historical max)
+    var range = (hhrz || (fsl + 10)) - la;
+    var pct = range > 0 ? Math.min(100, Math.max(0, ((z - la) / range) * 100)) : 50;
+
+    html += '<div class="rsvr-card ' + cardClass + '">';
+    html += '<div class="name" style="color:' + (cardClass === 'danger' ? '#ff5252' : cardClass === 'warning' ? '#ff9100' : '#4fc3f7') + '">' + name + '</div>';
+    html += '<div class="basin">' + d.basin + ' · ' + d.capacity_mw + 'MW</div>';
+    html += '<div class="level-wrap">';
+    html += '<svg width="90" height="90" viewBox="0 0 90 90">';
+    html += '<circle cx="45" cy="45" r="38" fill="none" stroke="#1a3a5c" stroke-width="6"/>';
+    var color = cardClass === 'danger' ? '#ff5252' : cardClass === 'warning' ? '#ff9100' : '#00c853';
+    html += '<circle cx="45" cy="45" r="38" fill="none" stroke="' + color + '" stroke-width="6" stroke-dasharray="' + (2.39 * pct) + ' 239" stroke-dashoffset="60" transform="rotate(-90 45 45)"/>';
+    html += '</svg>';
+    html += '<div class="level-val"><div class="z" style="color:' + color + '">' + z.toFixed(2) + '</div><div class="unit">m</div></div>';
+    html += '</div>';
+    html += '<div class="limits">汛限:' + (fsl || '--') + ' | 死水位:' + (la || '--') + ' | 历史最高:' + (hhrz || '--') + '</div>';
+    html += '<span class="warn-tag ' + tagClass + '">' + tagText + '</span>';
+    html += '<div class="flow">';
+    html += '<div class="flow-item"><div class="flow-val in">' + inq + '</div><div class="flow-label">入库 m³/s</div></div>';
+    html += '<div class="flow-item"><div class="flow-val out">' + otq + '</div><div class="flow-label">出库 m³/s</div></div>';
+    html += '<div class="flow-item"><div class="flow-val" style="color:#b2dfdb">' + w + '</div><div class="flow-label">蓄水量 亿m³</div></div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  document.getElementById('rsvrCards').innerHTML = html;
+}
+
+function renderLevelChart() {
+  var order = ['五强溪','凤滩','柘溪','东江','江垭'];
+  var names = [], zVals = [], fslVals = [], laVals = [];
+  order.forEach(function(n) {
+    var d = DATA.reservoirs[n];
+    if (!d) return;
+    names.push(n);
+    zVals.push(parseFloat(d.rz) || null);
+    fslVals.push(parseFloat(d.fsltdz) || null);
+    laVals.push(parseFloat(d.laz) || null);
+  });
+
+  var chart = echarts.init(document.getElementById('chartLevel'));
+  chart.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'rgba(10,20,40,0.9)', borderColor:'#1a3a5c', textStyle:{color:'#e0e6f0',fontSize:12} },
+    legend: { data:['当前水位','汛限水位','死水位'], textStyle:{color:'#7eb8da',fontSize:11}, top:0 },
+    grid: { left:50, right:30, top:35, bottom:30 },
+    xAxis: { type:'category', data:names, axisLabel:{color:'#7eb8da',fontSize:12}, axisLine:{lineStyle:{color:'#1a3a5c'}} },
+    yAxis: { type:'value', name:'水位(m)', axisLabel:{color:'#7eb8da',fontSize:11}, splitLine:{lineStyle:{color:'#0f1f3f'}} },
+    series: [
+      { name:'当前水位', type:'bar', data:zVals, itemStyle:{color:function(p){var v=p.value;return v>fslVals[p.dataIndex]?'#ff5252':'#4fc3f7';}}, label:{show:true,position:'top',color:'#e0e6f0',fontSize:11,formatter:'{c}'} },
+      { name:'汛限水位', type:'line', data:fslVals, lineStyle:{color:'#ff9100',type:'dashed',width:2}, symbol:'diamond',symbolSize:8, itemStyle:{color:'#ff9100'}, label:{show:true,position:'top',color:'#ff9100',fontSize:10,formatter:'{c}'} },
+      { name:'死水位', type:'line', data:laVals, lineStyle:{color:'#5c8db5',type:'dotted',width:1.5}, symbol:'triangle',symbolSize:6, itemStyle:{color:'#5c8db5'}, label:{show:true,position:'bottom',color:'#5c8db5',fontSize:10,formatter:'{c}'} }
+    ]
+  });
+}
+
+function renderFlowChart() {
+  var order = ['五强溪','凤滩','柘溪','东江','江垭'];
+  var names = [], inVals = [], outVals = [];
+  order.forEach(function(n) {
+    var d = DATA.reservoirs[n];
+    if (!d) return;
+    names.push(n);
+    inVals.push(d.inq ? parseFloat(d.inq) : null);
+    outVals.push(d.otq ? parseFloat(d.otq) : null);
+  });
+
+  var chart = echarts.init(document.getElementById('chartFlow'));
+  chart.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'rgba(10,20,40,0.9)', borderColor:'#1a3a5c', textStyle:{color:'#e0e6f0',fontSize:12} },
+    legend: { data:['入库流量','出库流量'], textStyle:{color:'#7eb8da',fontSize:11}, top:0 },
+    grid: { left:55, right:30, top:35, bottom:30 },
+    xAxis: { type:'category', data:names, axisLabel:{color:'#7eb8da',fontSize:12}, axisLine:{lineStyle:{color:'#1a3a5c'}} },
+    yAxis: { type:'value', name:'m³/s', axisLabel:{color:'#7eb8da',fontSize:11}, splitLine:{lineStyle:{color:'#0f1f3f'}} },
+    series: [
+      { name:'入库流量', type:'bar', data:inVals, itemStyle:{color:'#4fc3f7'}, label:{show:true,position:'top',color:'#4fc3f7',fontSize:10,formatter:function(p){return p.value>1000?(p.value/1000).toFixed(1)+'k':p.value;}} },
+      { name:'出库流量', type:'bar', data:outVals, itemStyle:{color:'#ff8a65'}, label:{show:true,position:'top',color:'#ff8a65',fontSize:10,formatter:function(p){return p.value>1000?(p.value/1000).toFixed(1)+'k':p.value;}} }
+    ]
+  });
+}
+
+function renderRiverChart() {
+  var basins = {};
+  Object.values(DATA.rivers).forEach(function(s) {
+    var b = s.hnnm || '其他';
+    if (!basins[b]) basins[b] = [];
+    basins[b].push(s);
+  });
+
+  var basinOrder = ['湘江','资水','沅江','澧水','洞庭湖'];
+  var allNames = [], allBJJ = [], colors = [];
+  var palette = {湘江:'#4fc3f7',资水:'#66bb6a',沅江:'#ff8a65',澧水:'#ba68c8',洞庭湖:'#ffd54f'};
+
+  basinOrder.forEach(function(b) {
+    var stns = basins[b] || [];
+    stns.forEach(function(s) {
+      allNames.push(s.name);
+      allBJJ.push(s.bjj !== null && s.bjj !== undefined ? parseFloat(s.bjj) : null);
+      colors.push(palette[b] || '#7eb8da');
+    });
+  });
+
+  var chart = echarts.init(document.getElementById('chartRiver'));
+  chart.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'rgba(10,20,40,0.9)', borderColor:'#1a3a5c', textStyle:{color:'#e0e6f0',fontSize:12}, formatter:function(p){return p[0].name+'<br/>比警戒: '+p[0].value+'m';} },
+    grid: { left:55, right:30, top:10, bottom:50 },
+    xAxis: { type:'category', data:allNames, axisLabel:{color:'#7eb8da',fontSize:9,rotate:45}, axisLine:{lineStyle:{color:'#1a3a5c'}} },
+    yAxis: { type:'value', name:'比警戒(m)', axisLabel:{color:'#7eb8da',fontSize:11}, splitLine:{lineStyle:{color:'#0f1f3f'}} },
+    series: [{
+      type:'bar', data:allBJJ.map(function(v,i){return {value:v,itemStyle:{color:colors[i]}};}),
+      label:{show:true,position:'bottom',color:'#e0e6f0',fontSize:9,formatter:'{c}'},
+      markLine:{silent:true,data:[{yAxis:0,label:{formatter:'警戒线',fontSize:10},lineStyle:{color:'#ff5252',type:'dashed'}}]}
+    }]
+  });
+}
+
+function renderRiverTable(basin) {
+  var stations = Object.values(DATA.rivers);
+  if (basin) {
+    stations = stations.filter(function(s){ return (s.hnnm||'') === basin; });
+  }
+  stations.sort(function(a,b){ return (parseFloat(a.bjj)||-99) - (parseFloat(b.bjj)||-99); });
+
+  var html = '';
+  stations.forEach(function(s){
+    var bjj = s.bjj ? parseFloat(s.bjj) : null;
+    var bjjClass = bjj !== null && bjj > 0 ? 'warn-cell' : '';
+    html += '<tr>';
+    html += '<td>' + s.name + '</td>';
+    html += '<td>' + (s.hnnm||'') + '</td>';
+    html += '<td>' + (s.rvnm||'') + '</td>';
+    html += '<td>' + (s.z||'--') + '</td>';
+    html += '<td class="flow-cell">' + (s.q||'--') + '</td>';
+    html += '<td class="' + bjjClass + '">' + (bjj !== null ? bjj.toFixed(2) : '--') + '</td>';
+    html += '<td>' + getWPTN(s.wptn) + '</td>';
+    html += '<td style="font-size:11px;color:#5c8db5">' + (s.tm||'').slice(11,16) + '</td>';
+    html += '</tr>';
+  });
+  document.getElementById('riverBody').innerHTML = html;
+}
+
+function renderBasinTabs() {
+  var basins = {};
+  Object.values(DATA.rivers).forEach(function(s){
+    var b = s.hnnm || '其他';
+    if (!basins[b]) basins[b] = 0;
+    basins[b]++;
+  });
+
+  var html = '<span class="basin-tab ' + (!currentBasin ? 'active' : '') + '" onclick="filterBasin(\x27\x27)">全部(' + Object.keys(DATA.rivers).length + ')</span>';
+  ['湘江','资水','沅江','澧水','洞庭湖'].forEach(function(b){
+    if (basins[b]) {
+      html += '<span class="basin-tab ' + (currentBasin === b ? 'active' : '') + '" onclick="filterBasin(\x27' + b + '\x27)">' + b + '(' + basins[b] + ')</span>';
+    }
+  });
+  document.getElementById('basinTabs').innerHTML = html;
+}
+
+function filterBasin(b) {
+  currentBasin = b;
+  renderBasinTabs();
+  renderRiverTable(b);
+}
+
+function loadData() {
+  document.getElementById('statusBar').innerHTML = '⏳ 加载中...';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'hunan_hypower_data.js?_=' + Date.now());
+  xhr.onload = function() {
+    // The JS file sets window.HUNAN_HYDRO_DATA
+    var s = document.createElement('script');
+    s.src = 'hunan_hypower_data.js?_=' + Date.now();
+    s.onload = function() {
+      DATA = window.HUNAN_HYDRO_DATA;
+      if (DATA && DATA.reservoirs) {
+        document.getElementById('updateTime').textContent = '更新: ' + (DATA.generated || '--');
+        document.getElementById('statusBar').innerHTML = '✅ 数据就绪 | 五大水库: ' + Object.keys(DATA.reservoirs).length + '座 | 控制站: ' + Object.keys(DATA.rivers).length + '个 | 流域: ' + Object.keys(DATA.basins).length + '个';
+        renderCards();
+        renderLevelChart();
+        renderFlowChart();
+        renderRiverChart();
+        renderBasinTabs();
+        renderRiverTable('');
+      }
+    };
+    document.head.appendChild(s);
+  };
+  xhr.onerror = function() {
+    document.getElementById('statusBar').innerHTML = '⚠️ 加载失败，使用缓存数据';
+    if (DATA) initWithData();
+  };
+  xhr.send();
+}
+
+function initWithData() {
+  document.getElementById('updateTime').textContent = '更新: ' + (DATA.generated || '--');
+  document.getElementById('statusBar').innerHTML = '✅ 数据就绪(缓存) | 五大水库: ' + Object.keys(DATA.reservoirs).length + '座 | 控制站: ' + Object.keys(DATA.rivers).length + '个';
+  renderCards();
+  renderLevelChart();
+  renderFlowChart();
+  renderRiverChart();
+  renderBasinTabs();
+  renderRiverTable('');
+}
+
+// Init
+if (DATA && DATA.reservoirs) {
+  initWithData();
+} else {
+  loadData();
+}
+
+// Auto refresh every 30min
+setInterval(loadData, 30 * 60 * 1000);
+
+// Resize
+window.addEventListener('resize', function() {
+  ['chartLevel','chartFlow','chartRiver'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { var c = echarts.getInstanceByDom(el); if (c) c.resize(); }
+  });
+});
+</script>
+</body>
+</html>
