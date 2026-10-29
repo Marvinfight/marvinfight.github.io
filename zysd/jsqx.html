@@ -849,18 +849,35 @@
           });
         }
 
+        // 度电影响：(晴天估价 − 市场均值) × 月光伏发电量 ÷ (月光伏发电量 + 月用电量)
+        function calculatePvCustomerImpact() {
+          const gen = readPvNumber('pv-customer-gen');
+          const consume = readPvNumber('pv-customer-consume');
+          const total = gen + consume;
+
+          return {
+            impact2026: total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * gen) / total : 0,
+            impact2027: total > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * gen) / total : 0,
+          };
+        }
+
         function renderPvCustomer() {
           const curve = calculatePvCustomerCurve();
           // 把测算曲线同时当作 2026 / 2027 的无光伏曲线，分别计算曲线优势
           const result = core.calculate(curve, curve);
+          const impact = calculatePvCustomerImpact();
 
           renderInputs('curve-result-pv', 'pvResult', '视为无光伏客户曲线', curve, true);
           renderCurveChart('curve-chart-pv-customer', curve, '视为无光伏客户曲线测算结果');
 
+          // 最终曲线优势 = 曲线优势 + 光伏度电影响
+          const combine = (base, extra) =>
+            base === null || !Number.isFinite(base) ? null : base + extra;
+
           document.getElementById('pv-customer-result-2026').textContent =
-            core.formatNumber(result.curve2026);
+            core.formatNumber(combine(result.curve2026, impact.impact2026));
           document.getElementById('pv-customer-result-2027').textContent =
-            core.formatNumber(result.curve2027);
+            core.formatNumber(combine(result.curve2027, impact.impact2027));
         }
 
         function createSvgElement(name, attributes = {}) {
