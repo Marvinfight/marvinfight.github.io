@@ -559,11 +559,10 @@
         </div>
       </section>
 
-      <section class="pv-panel" aria-label="光伏客户曲线测算" aria-live="polite">
+      <section class="pv-panel" aria-label="有光伏客户曲线测算" aria-live="polite">
         <div class="panel-heading">
           <div>
-            <p class="panel-kicker">光伏客户曲线测算</p>
-            <h2>视为无光伏客户曲线测算</h2>
+            <p class="panel-kicker">有光伏客户曲线测算</p>
           </div>
           <div class="panel-actions">
             <span class="unit">单位：MWh/kWh</span>
@@ -832,7 +831,7 @@
           document.getElementById('pv-impact-2027').textContent = format(impact2027);
         }
 
-        // ──── 光伏客户曲线测算 ────
+        // ──── 有光伏客户曲线测算 ────
         // 视为无光伏曲线[i] = 月用电量 × 负荷曲线权重[i] + 月光伏发电量 × 出力分解比例[i]
         function calculatePvCustomerCurve() {
           const gen = readPvNumber('pv-customer-gen');
@@ -1059,7 +1058,7 @@
             return;
           }
 
-          // 光伏客户曲线测算栏输入变化
+          // 有光伏客户曲线测算栏输入变化
           if (event.target.id && (
             event.target.id === 'pv-customer-gen' ||
             event.target.id === 'pv-customer-consume'
