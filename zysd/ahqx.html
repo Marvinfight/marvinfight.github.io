@@ -299,6 +299,17 @@
         border-top: 1px solid var(--border-light);
       }
 
+      .curve-subtitle {
+        margin-top: 22px;
+      }
+
+      .hour-input input[readonly] {
+        border-color: var(--border);
+        background: #f1f5f9;
+        color: #475569;
+        cursor: default;
+      }
+
       @media (max-width: 640px) {
         .pv-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
@@ -494,24 +505,72 @@
         <div class="pv-row">
           <div class="pv-field">
             <label for="pv-monthly-gen">光伏月发电量 (MWh)</label>
-            <input id="pv-monthly-gen" type="number" step="any" inputmode="decimal" min="0" value="240">
+            <input id="pv-monthly-gen" type="number" step="any" inputmode="decimal" min="0" value="10">
           </div>
           <div class="pv-field">
             <label for="pv-monthly-consume">月用电量不含光伏 (MWh)</label>
-            <input id="pv-monthly-consume" type="number" step="any" inputmode="decimal" min="0" value="3660">
+            <input id="pv-monthly-consume" type="number" step="any" inputmode="decimal" min="0" value="1000">
+          </div>
+          <div class="pv-field">
+            <label>光伏发电占比</label>
+            <output id="pv-ratio">10.00%</output>
           </div>
         </div>
         <hr class="pv-divider">
         <div class="pv-row">
           <div class="pv-field">
-            <label>光伏发电占比</label>
-            <output id="pv-ratio">--</output>
-          </div>
-          <div class="pv-field">
             <label>2026 度电影响 /厘</label>
             <output id="pv-impact-2026">--</output>
           </div>
         </div>
+      </section>
+
+      <section class="pv-panel" aria-label="有光伏客户曲线测算" aria-live="polite">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">有光伏客户曲线测算</p>
+          </div>
+          <div class="panel-actions">
+            <span class="unit">单位：MWh/kWh</span>
+            <button class="tool-button" type="button" data-action="download" data-curve="pvCustomer">下载模板</button>
+            <button class="tool-button primary" type="button" data-action="upload" data-curve="pvCustomer">上传Excel</button>
+            <input class="file-input" type="file" accept=".xlsx,.xls" data-curve="pvCustomer" hidden>
+          </div>
+        </div>
+        <div class="pv-row">
+          <div class="pv-field">
+            <label for="pv-customer-gen">月光伏发电量 (MWh)</label>
+            <input id="pv-customer-gen" type="number" step="any" inputmode="decimal" min="0" value="10">
+          </div>
+          <div class="pv-field">
+            <label for="pv-customer-consume">月用电量（不含光伏发电）(MWh)</label>
+            <input id="pv-customer-consume" type="number" step="any" inputmode="decimal" min="0" value="1000">
+          </div>
+          <div class="pv-field">
+            <label>2026 曲线优势 /厘</label>
+            <output id="pv-customer-result-2026">--</output>
+          </div>
+        </div>
+        <hr class="pv-divider">
+        <p class="panel-kicker">光伏客户负荷曲线（可手动填写或上传 Excel）</p>
+        <div
+          class="curve-grid"
+          id="curve-pv-customer"
+          role="group"
+          aria-label="光伏客户负荷曲线"
+        ></div>
+        <p class="panel-kicker curve-subtitle">视为无光伏客户曲线（测算结果）</p>
+        <div
+          class="curve-grid"
+          id="curve-result-pv"
+          role="group"
+          aria-label="视为无光伏客户曲线测算结果"
+        ></div>
+        <div
+          class="curve-chart"
+          id="curve-chart-pv-customer"
+          aria-label="视为无光伏客户曲线预览"
+        ></div>
       </section>
     </main>
 
@@ -521,28 +580,37 @@
 
         // @@@CONFIG:MARKET_CURVE_2026@@@
         const MARKET_CURVE_2026 = [
-          371.637351648352, 367.62604029304, 367.695659340659, 365.212875457875, 364.053373626374, 363.804769230769,
-          354.683725274725, 321.905791208791, 275.974509157509, 245.889095238095, 230.318304029304, 229.63726007326,
-          224.112838827839, 226.46519047619, 234.480062271062, 264.449846153846, 325.937003663004, 363.965168498168,
-          366.635168498168, 366.059443223443, 367.024461538462, 364.859117216117, 364.677864468865, 372.699051282051
+          371.8389899328857, 367.9655369127512, 367.99204697986596, 365.5343255033557, 364.43613422818817, 364.0874731543625,
+          355.59450335570494, 319.6013020134226, 278.91633221476513, 247.7209563758388, 231.8030604026846, 231.49481879194633,
+          225.73077181208046, 228.40613422818785, 239.2845167785235, 269.48287248322157, 324.2467617449665, 364.4066308724831,
+          366.7977684563758, 366.37274832214763, 367.19383221476517, 364.9903926174497, 365.0923288590605, 372.8745436241611
         ];
         // @@@CONFIG_END@@@
 
         // @@@CONFIG:PROVINCE_LOAD@@@
         const PROVINCE_LOAD = [
-          6983465.83, 6777482.77, 6896404.09, 6668473.76, 6579076.12, 6621718.42000001,
-          6201627.97, 5899184.09, 5976717.4, 5546991.35, 5345856.02, 5526031.4,
-          5316868.83, 5220028.6, 5266272.71, 5550545.93, 6073850.58, 6572082.67,
-          6835247.72, 6988333.82, 6875027.46, 6659454.24, 6662880.62, 6980925.1
+          7736904.84, 7499613.63, 7610205.96, 7359824.94, 7264977.19, 7311959.40000001,
+          6818347.72, 6487025.39, 6558803.53, 6074135.96, 5845276.39, 6034411.72,
+          5793562.47, 5706936.81, 5778466.21, 6123207.86, 6722229.22, 7281049.95,
+          7545114.09, 7667534.76, 7529673.32, 7292768.69, 7330453.89, 7724094.02
         ];
         // @@@CONFIG_END@@@
 
         // @@@CONFIG:DEFAULT_NO_PV_2026@@@
         const DEFAULT_NO_PV_2026 = [
-          4.04645161290323, 4.08258064516129, 4.10064516129032, 4.24516129032258, 4.08258064516129, 3.93806451612903,
-          3.82967741935484, 3.88387096774194, 4.13677419354839, 4.19096774193548, 4.10064516129032, 3.99225806451613,
-          3.95612903225806, 4.10064516129032, 4.13677419354839, 4.26322580645161, 4.38967741935484, 4.44387096774194,
-          4.24516129032258, 4.4258064516129, 4.5341935483871, 4.48, 4.46193548387097, 4.33548387096774
+          41.666666666666664, 41.666666666666664, 41.666666666666664, 41.666666666666664, 41.666666666666664, 42.933863366666664,
+          47.887450466666664, 58.98502156666667, 72.65538596666667, 83.94495656666666, 90.93373836666666, 93.54493156666666,
+          92.66173386666667, 88.55294456666667, 80.64256516666667, 68.89219576666667, 56.066629166666665, 46.85065316666667,
+          42.780263766666664, 41.666666666666664, 41.666666666666664, 41.666666666666664, 41.666666666666664, 41.666666666666664
+        ];
+        // @@@CONFIG_END@@@
+
+        // @@@CONFIG:PV_SPLIT@@@
+        const PV_SPLIT = [
+          0, 0, 0, 0, 0, 0.0033,
+          0.0162, 0.0451, 0.0807, 0.1101, 0.1283, 0.1351,
+          0.1328, 0.1221, 0.1015, 0.0709, 0.0375, 0.0135,
+          0.0029, 0, 0, 0, 0, 0
         ];
         // @@@CONFIG_END@@@
 
@@ -591,6 +659,7 @@
           }),
           calculate,
           formatNumber,
+          pvSplit: Object.freeze([...PV_SPLIT]),
         });
       })();
     </script>
@@ -602,13 +671,14 @@
         const core = globalThis.CalculatorCore;
         const state = {
           noPv2026: [...core.defaults.noPv2026],
+          pvCustomer: Array(24).fill(1),
         };
 
         function toInput(value) {
           return Number(value).toFixed(4).replace(/\.?0+$/, '');
         }
 
-        function renderInputs(containerId, curveName, label, values) {
+        function renderInputs(containerId, curveName, label, values, readonly = false) {
           const container = document.getElementById(containerId);
           container.replaceChildren();
 
@@ -625,9 +695,15 @@
             input.step = 'any';
             input.inputMode = 'decimal';
             input.value = toInput(value);
-            input.dataset.curve = curveName;
             input.dataset.index = String(index);
             input.setAttribute('aria-label', `${label} ${hour}:00`);
+
+            if (readonly) {
+              input.readOnly = true;
+              input.tabIndex = -1;
+            } else {
+              input.dataset.curve = curveName;
+            }
 
             wrapper.append(caption, input);
             container.append(wrapper);
@@ -676,6 +752,51 @@
             }) + '%';
 
           document.getElementById('pv-impact-2026').textContent = core.formatNumber(impact2026);
+        }
+
+        // ──── 有光伏客户曲线测算 ────
+        // 视为无光伏曲线[i] = 月用电量 × 负荷曲线权重[i] + 月光伏发电量 × 出力分解比例[i]
+        function calculatePvCustomerCurve() {
+          const gen = readPvNumber('pv-customer-gen');
+          const consume = readPvNumber('pv-customer-consume');
+          const shape = state.pvCustomer.map((value) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+          });
+          const shapeSum = shape.reduce((total, value) => total + value, 0);
+
+          return shape.map((value, index) => {
+            const weight = shapeSum > 0 ? value / shapeSum : 1 / 24;
+            return consume * weight + gen * core.pvSplit[index];
+          });
+        }
+
+        // 度电影响：(晴天估价 − 市场均值) × 月光伏发电量 ÷ (月光伏发电量 + 月用电量)
+        function calculatePvCustomerImpact() {
+          const gen = readPvNumber('pv-customer-gen');
+          const consume = readPvNumber('pv-customer-consume');
+          const total = gen + consume;
+
+          return {
+            impact2026: total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * gen) / total : 0,
+          };
+        }
+
+        function renderPvCustomer() {
+          const curve = calculatePvCustomerCurve();
+          const result = core.calculate(curve);
+          const impact = calculatePvCustomerImpact();
+
+          renderInputs('curve-result-pv', 'pvResult', '视为无光伏客户曲线', curve, true);
+          renderCurveChart('curve-chart-pv-customer', curve, '视为无光伏客户曲线测算结果');
+
+          // 最终曲线优势 = 曲线优势 + 光伏度电影响 − 2
+          const PV_ADJUST = -2;
+          const combine = (base, extra) =>
+            base === null || !Number.isFinite(base) ? null : base + extra + PV_ADJUST;
+
+          document.getElementById('pv-customer-result-2026').textContent =
+            core.formatNumber(combine(result.curve2026, impact.impact2026));
         }
 
         function createSvgElement(name, attributes = {}) {
@@ -807,8 +928,15 @@
             '2026 无光伏客户负荷曲线',
             state.noPv2026,
           );
+          renderInputs(
+            'curve-pv-customer',
+            'pvCustomer',
+            '光伏客户负荷曲线',
+            state.pvCustomer,
+          );
           renderCurveChart('curve-chart-2026', state.noPv2026, '2026 无光伏客户负荷曲线');
           renderResults();
+          renderPvCustomer();
         }
 
         document.getElementById('app').addEventListener('input', (event) => {
@@ -816,6 +944,13 @@
           const curveInput = event.target.closest('input[data-curve][data-index]');
           if (curveInput) {
             state[curveInput.dataset.curve][Number(curveInput.dataset.index)] = curveInput.value;
+
+            // 光伏客户负荷曲线变化：仅重算测算栏
+            if (curveInput.dataset.curve === 'pvCustomer') {
+              renderPvCustomer();
+              return;
+            }
+
             renderCurveChart(
               'curve-chart-2026',
               state[curveInput.dataset.curve],
@@ -832,17 +967,28 @@
             return;
           }
 
+          // 有光伏客户曲线测算栏输入变化
+          if (event.target.id && (
+            event.target.id === 'pv-customer-gen' ||
+            event.target.id === 'pv-customer-consume'
+          )) {
+            renderPvCustomer();
+            return;
+          }
+
           if (!curveInput) return;
           renderResults();
         });
 
         document.getElementById('reset-button').addEventListener('click', () => {
           state.noPv2026 = Array(24).fill(0);
+          state.pvCustomer = Array(24).fill(0);
           renderAll();
         });
 
         const CURVE_LABELS = {
           noPv2026: '2026无光伏客户负荷',
+          pvCustomer: '光伏客户负荷曲线',
         };
 
         function requireXlsx() {
