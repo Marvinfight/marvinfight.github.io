@@ -869,9 +869,10 @@
           renderInputs('curve-result-pv', 'pvResult', '视为无光伏客户曲线', curve, true);
           renderCurveChart('curve-chart-pv-customer', curve, '视为无光伏客户曲线测算结果');
 
-          // 最终曲线优势 = 曲线优势 + 光伏度电影响
+          // 最终曲线优势 = 曲线优势 + 光伏度电影响 − 2
+          const PV_ADJUST = -2;
           const combine = (base, extra) =>
-            base === null || !Number.isFinite(base) ? null : base + extra;
+            base === null || !Number.isFinite(base) ? null : base + extra + PV_ADJUST;
 
           document.getElementById('pv-customer-result-2026').textContent =
             core.formatNumber(combine(result.curve2026, impact.impact2026));
