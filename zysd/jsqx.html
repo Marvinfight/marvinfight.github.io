@@ -975,17 +975,16 @@
           };
         }
 
-        // 度电影响：(晴天估价 − 市场均值) × 月自用 ÷ (月自用 + 月用电量)
+        // 度电影响：(晴天估价 − 市场均值) × 月自用 ÷ 月用电量（不含光伏自用）
         function calculatePvCustomerImpact() {
           const generation = readPvNumber('pv-customer-gen');
           const exportEnergy = readPvNumber('pv-customer-export');
           const self = Math.max(0, generation - exportEnergy);
           const consume = readPvNumber('pv-customer-consume');
-          const total = self + consume;
 
           return {
-            impact2026: total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * self) / total : 0,
-            impact2027: total > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * self) / total : 0,
+            impact2026: consume > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * self) / consume : 0,
+            impact2027: consume > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * self) / consume : 0,
           };
         }
 
