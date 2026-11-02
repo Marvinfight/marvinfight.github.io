@@ -259,6 +259,10 @@
         gap: 16px;
       }
 
+      .pv-row.pv-row-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
       .pv-field {
         display: grid;
         gap: 5px;
@@ -310,8 +314,28 @@
         border-top: 1px solid var(--border-light);
       }
 
+      .pv-status {
+        margin: 12px 0 0;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #f8fafc;
+        color: var(--text-3);
+        font-size: 0.76rem;
+        line-height: 1.55;
+      }
+
+      .pv-status[data-state="warn"] {
+        border-color: #f59e0b;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
       @media (max-width: 640px) {
-        .pv-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pv-row,
+        .pv-row.pv-row-5 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
 
       /* ── 输入网格 ── */
@@ -571,10 +595,14 @@
             <input class="file-input" type="file" accept=".xlsx,.xls" data-curve="pvCustomer" hidden>
           </div>
         </div>
-        <div class="pv-row">
+        <div class="pv-row pv-row-5">
           <div class="pv-field">
-            <label for="pv-customer-gen">月光伏自用电量（光伏发电量-光伏上网电量）(MWh)</label>
+            <label for="pv-customer-gen">月光伏发电量 (MWh)</label>
             <input id="pv-customer-gen" type="number" step="any" inputmode="decimal" min="0" value="10">
+          </div>
+          <div class="pv-field">
+            <label for="pv-customer-export">月光伏上网电量 (MWh)</label>
+            <input id="pv-customer-export" type="number" step="any" inputmode="decimal" min="0" value="0">
           </div>
           <div class="pv-field">
             <label for="pv-customer-consume">月用电量（不含光伏自用电量）(MWh)</label>
@@ -589,25 +617,26 @@
             <output id="pv-customer-result-2027">--</output>
           </div>
         </div>
+        <p class="pv-status" id="pv-customer-status" role="status">逐时发电、自用、上网、负荷的合计会在这里显示。</p>
         <hr class="pv-divider">
-        <p class="panel-kicker">光伏客户负荷曲线（可手动填写或上传 Excel）</p>
+        <p class="panel-kicker">客户负荷曲线（不含光伏自用，24 点，可手动填写或上传 Excel）</p>
         <div
           class="curve-grid"
           id="curve-pv-customer"
           role="group"
-          aria-label="光伏客户负荷曲线"
+          aria-label="客户负荷曲线（不含光伏自用）"
         ></div>
-        <p class="panel-kicker curve-subtitle">视为无光伏客户曲线（测算结果）</p>
+        <p class="panel-kicker curve-subtitle">还原后的无光伏客户曲线（测算结果）</p>
         <div
           class="curve-grid"
           id="curve-result-pv"
           role="group"
-          aria-label="视为无光伏客户曲线测算结果"
+          aria-label="还原后的无光伏客户曲线测算结果"
         ></div>
         <div
           class="curve-chart"
           id="curve-chart-pv-customer"
-          aria-label="视为无光伏客户曲线预览"
+          aria-label="还原后的无光伏客户曲线预览"
         ></div>
       </section>
     </main>
@@ -831,43 +860,212 @@
           document.getElementById('pv-impact-2027').textContent = format(impact2027);
         }
 
-        // ──── 有光伏客户曲线测算 ────
-        // 视为无光伏曲线[i] = 月用电量 × 负荷曲线权重[i] + 月光伏发电量 × 出力分解比例[i]
-        function calculatePvCustomerCurve() {
-          const gen = readPvNumber('pv-customer-gen');
-          const consume = readPvNumber('pv-customer-consume');
+        // ──── 有光伏客户曲线测算（削顶版） ────
+        const PV_EPS = 1e-9;
+        const PV_SPLIT_SUM = core.pvSplit.reduce((total, value) => total + value, 0);
+        const PV_SHARE = core.pvSplit.map((value) =>
+          PV_SPLIT_SUM > 0 ? value / PV_SPLIT_SUM : 1 / 24,
+        );
+
+        function sumValues(values) {
+          return values.reduce((total, value) => total + value, 0);
+        }
+
+        function buildPvCustomerFallback(purchase, self, warnings) {
+          return {
+            curve: purchase.map((value, index) => value + self * PV_SHARE[index]),
+            purchase: purchase.slice(),
+            selfUse: PV_SHARE.map((value) => self * value),
+            exportCurve: Array(24).fill(0),
+            cutHours: [],
+            clipLevel: null,
+            warnings,
+            totals: {
+              selfUse: self,
+              export: 0,
+              grid: sumValues(purchase),
+            },
+          };
+        }
+
+        // 水平线削平：找 H，使 Σmin(P(t), H) = 月自用
+        function solveClipLevel(generationCurve, targetSelf) {
+          const peak = Math.max(...generationCurve);
+          if (peak <= 0 || targetSelf <= 0) return 0;
+          if (targetSelf >= sumValues(generationCurve)) return peak;
+
+          let low = 0;
+          let high = peak;
+          for (let iteration = 0; iteration < 60; iteration += 1) {
+            const middle = (low + high) / 2;
+            const absorbed = generationCurve.reduce(
+              (total, value) => total + Math.min(value, middle),
+              0,
+            );
+            if (absorbed < targetSelf) low = middle;
+            else high = middle;
+          }
+          return (low + high) / 2;
+        }
+
+        function calculatePvCustomerModel() {
+          const generation = readPvNumber('pv-customer-gen');
+          const grid = readPvNumber('pv-customer-consume');
+          const exportEnergy = readPvNumber('pv-customer-export');
+          const self = Math.max(0, generation - exportEnergy);
+
           const shape = state.pvCustomer.map((value) => {
             const parsed = Number(value);
             return Number.isFinite(parsed) ? parsed : 0;
           });
           const shapeSum = shape.reduce((total, value) => total + value, 0);
+          const warnings = [];
 
-          return shape.map((value, index) => {
-            const weight = shapeSum > 0 ? value / shapeSum : 1 / 24;
-            return consume * weight + gen * core.pvSplit[index];
+          if (exportEnergy > generation + 1e-6) {
+            warnings.push('月光伏上网电量大于月光伏发电量，数据不自洽；已按自用 0 计算。');
+          }
+
+          if (shapeSum <= 0) {
+            warnings.push('客户负荷曲线合计为 0，无法计算负荷系数，请填写或上传 24 点曲线。');
+            return buildPvCustomerFallback(Array(24).fill(0), self, warnings);
+          }
+
+          const weights = shape.map((value) => value / shapeSum);
+          const purchase = weights.map((weight) => grid * weight);
+          const generationCurve = PV_SHARE.map((value) => generation * value);
+          const clipLevel = solveClipLevel(generationCurve, self);
+          const selfUse = generationCurve.map((value) => Math.min(value, clipLevel));
+          const exportCurve = generationCurve.map((value, index) =>
+            Math.max(0, value - selfUse[index]),
+          );
+          const curve = purchase.map((value, index) => value + selfUse[index]);
+          const cutHours = [];
+          generationCurve.forEach((value, index) => {
+            if (value > clipLevel + PV_EPS) cutHours.push(index);
           });
-        }
 
-        // 度电影响：(晴天估价 − 市场均值) × 月光伏发电量 ÷ (月光伏发电量 + 月用电量)
-        function calculatePvCustomerImpact() {
-          const gen = readPvNumber('pv-customer-gen');
-          const consume = readPvNumber('pv-customer-consume');
-          const total = gen + consume;
+          const totalSelf = sumValues(selfUse);
+          const totalExport = sumValues(exportCurve);
+          const totalGrid = sumValues(purchase);
+
+          if (Math.abs(totalSelf - self) > Math.max(0.01, Math.abs(self) * 1e-4)) {
+            warnings.push(
+              `逐时自用合计 ${totalSelf.toFixed(2)} MWh 与填报 ${self.toFixed(2)} MWh 有差异。`,
+            );
+          }
+          if (Math.abs(totalExport - exportEnergy) > Math.max(0.01, Math.abs(exportEnergy) * 1e-4)) {
+            warnings.push(
+              `逐时上网合计 ${totalExport.toFixed(2)} MWh 与填报 ${exportEnergy.toFixed(2)} MWh 有差异。`,
+            );
+          }
 
           return {
-            impact2026: total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * gen) / total : 0,
-            impact2027: total > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * gen) / total : 0,
+            curve,
+            purchase: purchase.slice(),
+            selfUse,
+            exportCurve,
+            cutHours,
+            clipLevel,
+            warnings,
+            totals: {
+              selfUse: totalSelf,
+              export: totalExport,
+              grid: totalGrid,
+            },
           };
         }
 
+        // 度电影响：(晴天估价 − 市场均值) × 月自用 ÷ (月自用 + 月用电量)
+        function calculatePvCustomerImpact() {
+          const generation = readPvNumber('pv-customer-gen');
+          const exportEnergy = readPvNumber('pv-customer-export');
+          const self = Math.max(0, generation - exportEnergy);
+          const consume = readPvNumber('pv-customer-consume');
+          const total = self + consume;
+
+          return {
+            impact2026: total > 0 ? ((PV_PRICE_2026 - MARKET_AVG_2026) * self) / total : 0,
+            impact2027: total > 0 ? ((PV_PRICE_2027 - MARKET_AVG_2027) * self) / total : 0,
+          };
+        }
+
+        function formatHourRanges(hours) {
+          if (hours.length === 0) return '无';
+          const sorted = [...hours].sort((a, b) => a - b);
+          const ranges = [];
+          let start = sorted[0];
+          let end = sorted[0];
+
+          for (let index = 1; index < sorted.length; index += 1) {
+            if (sorted[index] === end + 1) {
+              end = sorted[index];
+            } else {
+              ranges.push([start, end]);
+              start = sorted[index];
+              end = sorted[index];
+            }
+          }
+          ranges.push([start, end]);
+
+          return ranges
+            .map(([from, to]) => {
+              const startLabel = String(from + 1).padStart(2, '0') + ':00';
+              const endLabel = String(to + 1).padStart(2, '0') + ':00';
+              return from === to ? startLabel : `${startLabel}–${endLabel}`;
+            })
+            .join('、');
+        }
+
+        function renderPvCustomerStatus(model) {
+          const element = document.getElementById('pv-customer-status');
+          if (!element) return;
+
+          const generation = readPvNumber('pv-customer-gen');
+          const exportEnergy = readPvNumber('pv-customer-export');
+          const grid = readPvNumber('pv-customer-consume');
+          const format = (value) =>
+            value.toLocaleString('zh-CN', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            });
+
+          const summary =
+            '逐时合计：发电 '
+            + format(generation)
+            + '，自用 '
+            + format(model.totals.selfUse)
+            + '（自动），上网 '
+            + format(model.totals.export)
+            + ' / 填报 '
+            + format(exportEnergy)
+            + '，负荷（不含光伏自用） '
+            + format(model.totals.grid)
+            + ' / 填报 '
+            + format(grid)
+            + '；削平线 H='
+            + (model.clipLevel === null ? '--' : format(model.clipLevel))
+            + ' MWh/h；削平时段：'
+            + formatHourRanges(model.cutHours);
+
+          if (model.warnings.length > 0) {
+            element.textContent = model.warnings.join(' ');
+            element.dataset.state = 'warn';
+          } else {
+            element.textContent = summary;
+            delete element.dataset.state;
+          }
+        }
+
         function renderPvCustomer() {
-          const curve = calculatePvCustomerCurve();
+          const model = calculatePvCustomerModel();
+          const curve = model.curve;
           // 把测算曲线同时当作 2026 / 2027 的无光伏曲线，分别计算曲线优势
           const result = core.calculate(curve, curve);
           const impact = calculatePvCustomerImpact();
 
-          renderInputs('curve-result-pv', 'pvResult', '视为无光伏客户曲线', curve, true);
-          renderCurveChart('curve-chart-pv-customer', curve, '视为无光伏客户曲线测算结果');
+          renderInputs('curve-result-pv', 'pvResult', '还原后的无光伏客户曲线', curve, true);
+          renderCurveChart('curve-chart-pv-customer', curve, '还原后的无光伏客户曲线测算结果');
+          renderPvCustomerStatus(model);
 
           // 最终曲线优势 = 曲线优势 + 光伏度电影响 − 2
           const PV_ADJUST = -2;
@@ -1018,7 +1216,7 @@
           renderInputs(
             'curve-pv-customer',
             'pvCustomer',
-            '光伏客户负荷曲线',
+            '客户负荷曲线（不含光伏自用）',
             state.pvCustomer,
           );
           renderCurveChart('curve-chart-2026', state.noPv2026, '2026 无光伏客户负荷曲线');
@@ -1062,7 +1260,8 @@
           // 有光伏客户曲线测算栏输入变化
           if (event.target.id && (
             event.target.id === 'pv-customer-gen' ||
-            event.target.id === 'pv-customer-consume'
+            event.target.id === 'pv-customer-consume' ||
+            event.target.id === 'pv-customer-export'
           )) {
             renderPvCustomer();
             return;
@@ -1082,7 +1281,7 @@
         const CURVE_LABELS = {
           noPv2026: '2026无光伏客户负荷',
           customer2027: '2027无光伏客户负荷',
-          pvCustomer: '光伏客户负荷曲线',
+          pvCustomer: '客户负荷曲线',
         };
 
         function requireXlsx() {
