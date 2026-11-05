@@ -742,7 +742,9 @@
 
         function renderResults() {
           const result = core.calculate(state.noPv2026);
-          document.getElementById('result-2026').textContent = core.formatNumber(result.curve2026);
+          // 2026 曲线优势固定调整 −2
+          const curve2026 = result.curve2026 === null ? null : result.curve2026 - 2;
+          document.getElementById('result-2026').textContent = core.formatNumber(curve2026);
           renderPVImpact();
         }
 
